@@ -163,4 +163,4 @@ cython_debug/
 
 # Ignore the data folder
 /data/
-
+/outputs/

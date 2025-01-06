@@ -9,6 +9,7 @@ import os
 import ws3.opt
 import pickle
 import numpy as np
+from math import pi
 
 
 
@@ -89,7 +90,7 @@ def hwp_carbon_stock(fm, products, product_coefficients, decay_rates, hwp_pool_e
     """
     Compile periodic harvested wood products carbon stocks data.
     """
-    from util_opt import calculate_c_value_stock, calculate_initial_c_value_stock
+    from util import calculate_c_value_stock, calculate_initial_c_value_stock
     data_carbon_stock = {'period': [], 'co2_stock': []}    
     for i in range(0, fm.horizon * 10 + 1):
         period_value = i
@@ -131,7 +132,7 @@ def calculate_co2_value_emission_residue(fm, i, util=0.85):
 
 # Emission (by year)
 def hwp_carbon_emission(fm, products, product_coefficients, decay_rates, hwp_pool_effect_value):
-    from util_opt import calculate_co2_value_emission, calculate_initial_co2_value_emission, calculate_co2_value_emission_residue, calculate_initial_co2_value_emission_residue
+    from util import calculate_co2_value_emission, calculate_initial_co2_value_emission, calculate_co2_value_emission_residue, calculate_initial_co2_value_emission_residue
     data_carbon_emission = {'period': [], 'co2_emission': []}    
     for i in range(0, fm.horizon * 10  + 1):
         period_value = i
@@ -181,7 +182,7 @@ def calculate_concrete_volume(fm, i, product_coefficients, credibility, clt_conv
 
 # Iterate through the rows of the DataFrame
 def emission_concrete_manu(fm, product_coefficients, credibility, clt_conversion_rate, co2_concrete_manu_factor, displacement_effect):
-    from util_opt import  calculate_concrete_volume
+    from util import  calculate_concrete_volume
     df_emission_concrete_manu = {'period': [], 'co2_concrete_manu': []}
     for i in range(0, fm.horizon *10   + 1 ):
         period_value = i
@@ -200,7 +201,7 @@ def emission_concrete_manu(fm, product_coefficients, credibility, clt_conversion
 
 # Displacement of concrete landfill
 def emission_concrete_landfill(fm, product_coefficients, credibility, clt_conversion_rate, co2_concrete_landfill_factor, displacement_effect):
-    from util_opt import  calculate_concrete_volume
+    from util import  calculate_concrete_volume
     df_emission_concrete_landfill = {'period': [], 'co2_concrete_landfill': []}   
     # Iterate through the rows of the DataFrame
     for i in range(0, fm.horizon *10   + 1 ):
@@ -285,7 +286,7 @@ def plot_results(fm):
     return fig, ax, df
 
 
-def compile_scenario_maxstock(fm):
+def compile_scenario_maxstock(fm, case_study, obj_mode, scenario_name):
     oha = [fm.compile_product(period, '1.', acode='harvest') for period in fm.periods]
     ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
     ogs = [fm.inventory(period, 'totvol') for period in fm.periods]
@@ -300,18 +301,42 @@ def compile_scenario_maxstock(fm):
     df = pd.DataFrame(data)
 
 
-    # csv_folder_path = 'outputs/only_grow.csv'
-    # if not os.path.exists(csv_folder_path):
-    #     os.makedirs(csv_folder_path)
+    csv_folder_path = os.path.join('./outputs/csv', case_study)
+    if not os.path.exists(csv_folder_path):
+        os.makedirs(csv_folder_path)
     
-    # csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_maxstock.csv')
-    csv_file_path = 'outputs/only_grow.csv'
+    csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_maxstock.csv')
     df.to_csv(csv_file_path, index=False)
     
     return df
 
 
-def plot_scenario_maxstock(df):
+# def compile_scenario_maxstock(fm):
+#     oha = [fm.compile_product(period, '1.', acode='harvest') for period in fm.periods]
+#     ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
+#     ogs = [fm.inventory(period, 'totvol') for period in fm.periods]
+#     ocp = [fm.inventory(period, 'ecosystem') for period in fm.periods]
+#     ocf = [fm.inventory(period, 'total_emissions') for period in fm.periods]
+#     data = {'period':fm.periods, 
+#             'oha':oha, 
+#             'ohv':ohv, 
+#             'ogs':ogs,
+#             'ocp':ocp,
+#             'ocf':ocf}
+#     df = pd.DataFrame(data)
+
+
+    # csv_folder_path = os.path.join('./outputs/csv', case_study)
+    # if not os.path.exists(csv_folder_path):
+    #     os.makedirs(csv_folder_path)
+    
+    # csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_maxstock.csv')
+    # df.to_csv(csv_file_path, index=False)
+    
+    # return df
+
+
+def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
     fig, ax = plt.subplots(1, 4, figsize=(20, 5))
     # Plot and label the first subplot for harvested area
     ax[0].bar(df.period, df.oha)
@@ -350,19 +375,75 @@ def plot_scenario_maxstock(df):
 
     plt.tight_layout()
     
-    # folder_path = os.path.join('./outputs/fig', case_study)
-    # if not os.path.exists(folder_path):
-    #     os.makedirs(folder_path)   
-    # file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling_maxstock.pdf"
-    # file_path = os.path.join(folder_path, file_name)
+    folder_path = os.path.join('./outputs/fig', case_study)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)   
+    file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling_maxstock.pdf"
+    file_path = os.path.join(folder_path, file_name)
     
-    # # Save and show plot
-    # plt.savefig(file_path)
+    # Save and show plot
+    plt.savefig(file_path)
     plt.show()
     plt.close()
-    # print(f"Plot saved to {file_path}")
+    print(f"Plot saved to {file_path}")
     
     return fig, ax
+
+
+
+# def plot_scenario_maxstock(df):
+#     fig, ax = plt.subplots(1, 4, figsize=(20, 5))
+#     # Plot and label the first subplot for harvested area
+#     ax[0].bar(df.period, df.oha)
+#     ax[0].set_ylim(0, None)
+#     ax[0].set_title('Harvested area')
+#     ax[0].set_xlabel('Period')
+#     ax[0].set_ylabel('Area (ha)')
+    
+#     # Plot and label the second subplot for harvested volume
+#     ax[1].bar(df.period, df.ohv)
+#     ax[1].set_ylim(0, None)
+#     ax[1].set_title('Harvested volume')
+#     ax[1].set_xlabel('Period')
+#     ax[1].set_ylabel('Volume (m3)')
+
+#     # Plot and label the third subplot for growing stock
+#     ax[2].bar(df.period, df.ogs)
+#     ax[2].set_ylim(0, None)
+#     ax[2].set_xlabel('Period')
+#     ax[2].set_title('Growing Stock')
+#     ax[2].set_ylabel('Volume (m3)')
+
+#     # Plot and label the fourth subplot for ecosystem carbon stock
+#     ax[3].bar(df.period, df.ocp)
+#     ax[3].set_ylim(0, None)
+#     ax[3].set_title('Ecosystem C stock')
+#     ax[3].set_xlabel('Period')
+#     ax[3].set_ylabel('Stock (ton)')
+
+#     # # Plot and label the fifth subplot for total carbon emission
+#     # ax[4].bar(df.period, df.ocf)
+#     # ax[4].set_ylim(0, None)
+#     # ax[4].set_title('Total Carbon Emission')
+#     # ax[4].set_xlabel('Period')
+#     # ax[4].set_ylabel('tons of C')
+
+#     plt.tight_layout()
+    
+#     # folder_path = os.path.join('./outputs/fig', case_study)
+#     # if not os.path.exists(folder_path):
+#     #     os.makedirs(folder_path)   
+#     # file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling_maxstock.pdf"
+#     # file_path = os.path.join(folder_path, file_name)
+    
+#     # # Save and show plot
+#     # plt.savefig(file_path)
+#     # plt.show()
+#     # plt.close()
+#     # print(f"Plot saved to {file_path}")
+    
+#     return fig, ax
+
 
 
 def compile_scenario_minemission(fm, case_study, obj_mode, scenario_name):
@@ -370,7 +451,7 @@ def compile_scenario_minemission(fm, case_study, obj_mode, scenario_name):
     ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
     ogs = [fm.inventory(period, 'totvol') for period in fm.periods]
     ocp = [fm.inventory(period, 'ecosystem') for period in fm.periods]
-    ocf = [fm.inventory(period, 'net_emissions') for period in fm.periods]
+    ocf = [fm.inventory(period, 'net_emission') for period in fm.periods]
     data = {'period':fm.periods, 
             'oha':oha, 
             'ohv':ohv, 
@@ -477,7 +558,7 @@ def cmp_c_ss(fm, path, clt_percentage, hwp_pool_effect_value, expr, yname, half_
 
         
         ecosystem = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
-        result += hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
+        result = hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
 
     return result
 
@@ -536,12 +617,12 @@ def cmp_c_se(fm, path, clt_percentage, hwp_pool_effect_value, displacement_effec
 
 
         
-        net_emissions = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
+        net_emission = 10 * fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
         
         co2_concrete_manu_accu += concrete_volume * util * co2_concrete_manu_factor / 1000.
         co2_concrete_landfill_accu += concrete_volume * util * co2_concrete_landfill_factor / 1000.
         
-        result += hwp_pool_effect_value * (hwp_wood_emission + hwp_paper_emission) + net_emissions + hwps_residue_emission + release_immediately_value * hwp_emission_immediately - displacement_effect * (co2_concrete_manu_accu + co2_concrete_landfill_accu)
+        result += hwp_pool_effect_value * (hwp_wood_emission + hwp_paper_emission) + net_emission + hwps_residue_emission + release_immediately_value * hwp_emission_immediately - displacement_effect * (co2_concrete_manu_accu + co2_concrete_landfill_accu)
 
     return result
 
@@ -604,7 +685,7 @@ def cmp_c_ci(fm, path, yname, mask=None): # product, named actions
 def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=1.0, displacement_effect=1.0, release_immediately_value=0., name='base', util=0.85, harvest_acode='harvest',
                  cflw_ha={}, cflw_hv={}, 
                  cgen_ha={}, cgen_hv={}, cgen_gs={}, 
-                 tvy_name='totvol', cp_name='ecosystem', ce_name='net_emissions', obj_mode='max_hv', mask=None):
+                 tvy_name='totvol', cp_name='ecosystem', ce_name='net_emission', obj_mode='max_hv', mask=None):
     from functools import partial
     import numpy as np
     coeff_funcs = {}
@@ -664,12 +745,12 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=1.0, displacement_
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-    initial_inv_equit = 869737. #ha
+    # initial_inv_equit = 869737. #ha
     initial_gs_equit = 106582957.  #m3   
-    initial_inv_red = 390738.
-    initial_gs_red =18018809.
-    initial_inv_gold = 191273.
-    initial_gs_gold = 7017249.
+    # initial_inv_red = 390738. #ha
+    initial_gs_red =18018809. #m3   
+    # initial_inv_gold = 191273. #ha
+    initial_gs_gold = 7017249. #m3   
     aac_equity =  18255528. # AAC per year * 10
     aac_red =  1072860. # AAC per year * 10
     aac_gold =  766066. # AAC per year * 10
@@ -768,7 +849,7 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         cgen_hv = {'lb':{1:aac_gold}, 'ub':{1:aac_gold}}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_red*2}} #Not less than 90% of initial growing stock
+        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
     elif scenario_name == 'gldbr_AAC_90%': 
         # Alternative scenario for the Golden Bear mining site (90%_AAC): 
         print('running the scenario for the Golden Bear mining site (90%_AAC),')
@@ -839,70 +920,70 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         print('running business as usual scenario for the Equity Silver mining site')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.7*aac_equity}, 'ub':{1:0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.50*aac_equity}, 'ub':{1:0.50*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock
     elif scenario_name == 'eqtslvr_AAC_90%': 
         # Alternative scenario for the Equity Silver mining site (90%_AAC): 
         print('running the scenario for the Equity Silver mining site (90%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.9*0.7*aac_equity}, 'ub':{1:0.9*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.9*0.5*aac_equity}, 'ub':{1:0.9*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock
     elif scenario_name == 'eqtslvr_AAC_80%': 
         # Alternative scenario for the Equity Silver mining site (80%_AAC): 
         print('running the scenario for the Equity Silver mining site (80%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.8*0.7*aac_equity}, 'ub':{1:0.8*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.8*0.5*aac_equity}, 'ub':{1:0.8*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock    
     elif scenario_name == 'eqtslvr_AAC_70%': 
         # Alternative scenario for the Equity Silver mining site (70%_AAC): 
         print('running the scenario for the Equity Silver mining site (70%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.7*0.7*aac_equity}, 'ub':{1:0.7*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.7*0.5*aac_equity}, 'ub':{1:0.7*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
     elif scenario_name == 'eqtslvr_AAC_60%': 
         # Alternative scenario for the Equity Silver mining site (60%_AAC): 
         print('running the scenario for the Equity Silver mining site (60%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.6*0.7*aac_equity}, 'ub':{1:0.6*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.6*0.5*aac_equity}, 'ub':{1:0.6*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock           
     elif scenario_name == 'eqtslvr_AAC_50%': 
         # Alternative scenario for the Equity Silver mining site (50%_AAC): 
         print('running the scenario for the Equity Silver mining site (50%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.5*0.7*aac_equity}, 'ub':{1:0.5*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.5*0.5*aac_equity}, 'ub':{1:0.5*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
     elif scenario_name == 'eqtslvr_AAC_40%': 
         # Alternative scenario for the Equity Silver mining site (40%_AAC): 
         print('running the scenario for the Equity Silver mining site (40%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.4*0.7*aac_equity}, 'ub':{1:0.4*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.4*0.5*aac_equity}, 'ub':{1:0.4*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
     elif scenario_name == 'eqtslvr_AAC_30%': 
         # Alternative scenario for the Equity Silver mining site (30%_AAC): 
         print('running the scenario for the Equity Silver mining site (30%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.3*0.7*aac_equity}, 'ub':{1:0.3*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.3*0.5*aac_equity}, 'ub':{1:0.3*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
     elif scenario_name == 'eqtslvr_AAC_20%': 
         # Alternative scenario for the Equity Silver mining site (20%_AAC): 
         print('running the scenario for the Equity Silver mining site (20%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.2*0.7*aac_equity}, 'ub':{1:0.2*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.2*0.5*aac_equity}, 'ub':{1:0.2*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock       
     elif scenario_name == 'eqtslvr_AAC_10%': 
         # Alternative scenario for the Equity Silver mining site (10%_AAC): 
         print('running the scenario for the Equity Silver mining site (10%_AAC),')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.1*0.7*aac_equity}, 'ub':{1:0.1*0.7*aac_equity}} 
+        cgen_hv = {'lb':{1:0.1*0.5*aac_equity}, 'ub':{1:0.1*0.5*aac_equity+1}} 
         cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock  
     else:
         assert False # bad scenario name
@@ -1108,8 +1189,8 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
     co2_concrete_manu_factor = 298.
     concrete_density = 2400 #kg/m3
     co2_concrete_landfill_factor = 0.00517 * concrete_density
-    sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name, solver='gurobi')
-    # sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name) #This uses pulp
+    # sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name, solver='gurobi')
+    sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name) #This uses pulp
 
     # df = compile_scenario(fm, case_study, obj_mode, scenario_name)
     # plot_scenario(df, case_study, obj_mode, scenario_name)
@@ -1122,7 +1203,7 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
     disturbance_type_mapping = [{'user_dist_type': 'harvest', 'default_dist_type': 'Clearcut harvesting without salvage'},
                             {'user_dist_type': 'fire', 'default_dist_type': 'Wildfire'}]
     for dtype_key in fm.dtypes:
-        fm.dt(dtype_key).last_pass_disturbance = 'fire' if dtype_key[5] == dtype_key[4] else 'harvest'
+        fm.dt(dtype_key).last_pass_disturbance = 'fire' if dtype_key[2] == dtype_key[4] else 'harvest'
     sit_config, sit_tables = fm.to_cbm_sit(softwood_volume_yname='swdvol', 
                                        hardwood_volume_yname='hwdvol', 
                                        admin_boundary='British Columbia', 
@@ -1209,10 +1290,15 @@ def scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, 
     ax.set_title('Net emission difference between base and alternative scenarios')
     ax.set_xlabel('Year')
     ax.set_ylabel('Net Carbon emission diffrence')   
-    dollar_per_ton = abs(budget_input / dif_scenario.iloc[:25]['Net emission'].sum())
-    print( "Net emission difference", dif_scenario.iloc[:25]['Net emission'].sum())
-    print( "Net emission base scenario", cbm_output_2.iloc[:25]['Net emission'].sum())
-    print( "Net emission alternative scenario", cbm_output_4.iloc[:25]['Net emission'].sum())    
+    # dollar_per_ton = abs(budget_input / dif_scenario.iloc[:25]['Net emission'].sum()) # Calculate for the next 25 years
+    # print( "Net emission difference", dif_scenario.iloc[:25]['Net emission'].sum())
+    # print( "Net emission base scenario", cbm_output_4.iloc[:25]['Net emission'].sum())
+    # print( "Net emission alternative scenario", cbm_output_2.iloc[:25]['Net emission'].sum())    
+
+    dollar_per_ton = abs(budget_input / dif_scenario['Net emission'].sum()) # Calculate for the next 25 years
+    print( "Net emission difference", dif_scenario['Net emission'].sum())
+    print( "Net emission base scenario", cbm_output_4['Net emission'].sum())
+    print( "Net emission alternative scenario", cbm_output_2['Net emission'].sum()) 
     print('dollar_per_ton is: ', dollar_per_ton)
     plt.savefig(output_file_path)
     return ax
@@ -1268,7 +1354,8 @@ def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shanno
 
     colors = {
         'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 'Alder': '#00FF00',
-        'DougFir': '#00FFFF', 'Hem': '#1E90FF', 'Pine': '#9400D3', 'Spruce': '#FF00FF'
+        'DougFir': '#00FFFF', 'Hem': '#1E90FF', 'Pine': '#9400D3', 'Spruce': '#FF00FF', 
+        'Birch': '#800080'
     }
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 6))
@@ -1334,7 +1421,7 @@ def compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_ec
 
 def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, pickle_output_base,  
                   pickle_output_alter):
-    from util_opt import stock_emission_scenario, plot_scenarios, scenario_dif, stock_emission_scenario_equivalent, compare_kpi_age, kpi_socioeconomic, compare_kpi_socioeconomic
+    from util import stock_emission_scenario, plot_scenarios, scenario_dif, stock_emission_scenario_equivalent, compare_kpi_age, kpi_socioeconomic, compare_kpi_socioeconomic
 
 
     # Create a folder for pickle outputs
@@ -1449,462 +1536,462 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
 
 
 
-# def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
-#     # Add carbon pools indicators 
-#     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
+def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
+    # Add carbon pools indicators 
+    pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
 
-#     annual_carbon_stock = pd.DataFrame({'Year': pi['timestep'],
-#                                          'Biomass': pi[biomass_pools].sum(axis=1),
-#                                          'DOM': pi[dom_pools].sum(axis=1),
-#                                          'Ecosystem': pi[biomass_pools + dom_pools].sum(axis=1)})
+    annual_carbon_stock = pd.DataFrame({'Year': pi['timestep'],
+                                         'Biomass': pi[biomass_pools].sum(axis=1),
+                                         'DOM': pi[dom_pools].sum(axis=1),
+                                         'Ecosystem': pi[biomass_pools + dom_pools].sum(axis=1)})
     
-#     annual_product_stock = pd.DataFrame({'Year': pi['timestep'],
-#                                          'Product': pi['Products']})
+    annual_product_stock = pd.DataFrame({'Year': pi['timestep'],
+                                         'Product': pi['Products']})
     
-#     annual_stock_change = annual_carbon_stock[['Year', 'Ecosystem']].copy()
-#     annual_stock_change['Stock_Change'] = annual_stock_change['Ecosystem'].diff()
-#     annual_stock_change = annual_stock_change[['Year', 'Stock_Change']]
-#     annual_stock_change.loc[annual_stock_change['Year'] == 0, 'Stock_Change'] = 0
+    annual_stock_change = annual_carbon_stock[['Year', 'Ecosystem']].copy()
+    annual_stock_change['Stock_Change'] = annual_stock_change['Ecosystem'].diff()
+    annual_stock_change = annual_stock_change[['Year', 'Stock_Change']]
+    annual_stock_change.loc[annual_stock_change['Year'] == 0, 'Stock_Change'] = 0
      
-#     fi = cbm_output.classifiers.to_pandas().merge(cbm_output.flux.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
+    fi = cbm_output.classifiers.to_pandas().merge(cbm_output.flux.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
     
-#     annual_all_emission = pd.DataFrame({'Year': fi['timestep'],
-#                                          'All_Emissions': fi[fluxes].sum(axis=1)})
+    annual_all_emission = pd.DataFrame({'Year': fi['timestep'],
+                                         'All_Emissions': fi[fluxes].sum(axis=1)})
     
-#     annual_gross_growth = pd.DataFrame({'Year': fi['timestep'],
-#                                         'Gross_Growth': fi[gross_growth].sum(axis=1)})
+    annual_gross_growth = pd.DataFrame({'Year': fi['timestep'],
+                                        'Gross_Growth': fi[gross_growth].sum(axis=1)})
      
-#     n_steps = fm.horizon * fm.period_length
-#     annual_carbon_stock.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None), xlabel="Year", ylabel="Stock (ton C)",
-#         title="Annual Carbon Stock"
-#     )
+    n_steps = fm.horizon * fm.period_length
+    annual_carbon_stock.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None), xlabel="Year", ylabel="Stock (ton C)",
+        title="Annual Carbon Stock"
+    )
 
-#     annual_all_emission.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
-#         title="Annual Ecosystem Carbon Emission", xlabel="Year", ylabel="Stock (ton C)"
-#     )
+    annual_all_emission.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
+        title="Annual Ecosystem Carbon Emission", xlabel="Year", ylabel="Stock (ton C)"
+    )
 
-#     annual_stock_change.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
-#         title="Annual Ecosystem Carbon Stock Change", xlabel="Year", ylabel="tons of C"
-#     )
+    annual_stock_change.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
+        title="Annual Ecosystem Carbon Stock Change", xlabel="Year", ylabel="tons of C"
+    )
 
-#     annual_gross_growth.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
-#         title="Annual Forest Gross Growth", xlabel="Year", ylabel="tons of C"
-#     )
+    annual_gross_growth.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
+        title="Annual Forest Gross Growth", xlabel="Year", ylabel="tons of C"
+    )
 
-#     df_cs = annual_carbon_stock.groupby('Year').sum()
-#     df_ae = annual_all_emission.groupby('Year').sum()
-#     df_gg = annual_gross_growth.groupby('Year').sum()
-#     df_sc = annual_stock_change.groupby('Year').sum()
+    df_cs = annual_carbon_stock.groupby('Year').sum()
+    df_ae = annual_all_emission.groupby('Year').sum()
+    df_gg = annual_gross_growth.groupby('Year').sum()
+    df_sc = annual_stock_change.groupby('Year').sum()
 
-#     # Correctly merging all dataframes
-#     merged_df = pd.merge(pd.merge(pd.merge(df_cs, df_ae, left_index=True, right_index=True, how='outer'),
-#                                   df_gg, left_index=True, right_index=True, how='outer'),
-#                          df_sc, left_index=True, right_index=True, how='outer')
+    # Correctly merging all dataframes
+    merged_df = pd.merge(pd.merge(pd.merge(df_cs, df_ae, left_index=True, right_index=True, how='outer'),
+                                  df_gg, left_index=True, right_index=True, how='outer'),
+                         df_sc, left_index=True, right_index=True, how='outer')
 
-#     merged_df['Stock_Change'] = merged_df['Ecosystem'].diff() * (-1)
-#     merged_df.at[0, 'Stock_Change'] = 0
+    merged_df['Stock_Change'] = merged_df['Ecosystem'].diff() * (-1)
+    merged_df.at[0, 'Stock_Change'] = 0
 
-#     return merged_df
+    return merged_df
 
 
-# def cbm_report_both(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
-#     # Add carbon pools indicators 
-#     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
+def cbm_report_both(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
+    # Add carbon pools indicators 
+    pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
 
-#     annual_carbon_stock = pd.DataFrame({'Year': pi['timestep'],
-#                                          'Biomass': pi[biomass_pools].sum(axis=1),
-#                                          'DOM': pi[dom_pools].sum(axis=1),
-#                                          'Ecosystem': pi[biomass_pools + dom_pools].sum(axis=1)})
+    annual_carbon_stock = pd.DataFrame({'Year': pi['timestep'],
+                                         'Biomass': pi[biomass_pools].sum(axis=1),
+                                         'DOM': pi[dom_pools].sum(axis=1),
+                                         'Ecosystem': pi[biomass_pools + dom_pools].sum(axis=1)})
     
-#     annual_product_stock = pd.DataFrame({'Year': pi['timestep'],
-#                                          'Product': pi['Products']})
+    annual_product_stock = pd.DataFrame({'Year': pi['timestep'],
+                                         'Product': pi['Products']})
     
-#     annual_stock_change = annual_carbon_stock[['Year', 'Ecosystem']].copy()
-#     annual_stock_change['Stock_Change'] = annual_stock_change['Ecosystem'].diff()
-#     annual_stock_change = annual_stock_change[['Year', 'Stock_Change']]
-#     annual_stock_change.loc[annual_stock_change['Year'] == 0, 'Stock_Change'] = 0
+    annual_stock_change = annual_carbon_stock[['Year', 'Ecosystem']].copy()
+    annual_stock_change['Stock_Change'] = annual_stock_change['Ecosystem'].diff()
+    annual_stock_change = annual_stock_change[['Year', 'Stock_Change']]
+    annual_stock_change.loc[annual_stock_change['Year'] == 0, 'Stock_Change'] = 0
      
-#     fi = cbm_output.classifiers.to_pandas().merge(cbm_output.flux.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
+    fi = cbm_output.classifiers.to_pandas().merge(cbm_output.flux.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
     
-#     annual_all_emission = pd.DataFrame({'Year': fi['timestep'],
-#                                          'All_Emissions': 44/12 * fi[fluxes].sum(axis=1)})
+    annual_all_emission = pd.DataFrame({'Year': fi['timestep'],
+                                         'All_Emissions': 44/12 * fi[fluxes].sum(axis=1)})
     
-#     annual_gross_growth = pd.DataFrame({'Year': fi['timestep'],
-#                                         'Gross_Growth': 44/12 * -1 * fi[gross_growth].sum(axis=1)})
+    annual_gross_growth = pd.DataFrame({'Year': fi['timestep'],
+                                        'Gross_Growth': 44/12 * -1 * fi[gross_growth].sum(axis=1)})
 
-#     annual_net_emissions = pd.DataFrame({'Year': fi['timestep'],
-#                                         'Net_Emissions': 44/12 * (fi[fluxes].sum(axis=1) - fi[gross_growth].sum(axis=1)) })
-
-    
-#     n_steps = fm.horizon * fm.period_length
-#     annual_carbon_stock.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None), xlabel="Year", ylabel="Stock (ton C)",
-#         title="Annual Carbon Stock"
-#     )
-
-#     annual_all_emission.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
-#         title="Annual Ecosystem Carbon Emission", xlabel="Year", ylabel="Stock (ton C)"
-#     )
-
-#     annual_stock_change.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
-#         title="Annual Ecosystem Carbon Stock Change", xlabel="Year", ylabel="tons of C"
-#     )
-
-#     annual_gross_growth.groupby('Year').sum().plot(
-#         figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
-#         title="Annual Forest Gross Growth", xlabel="Year", ylabel="tons of C"
-#     )
-
-#     df_cs = annual_carbon_stock.groupby('Year').sum()
-#     df_ae = annual_all_emission.groupby('Year').sum()
-#     df_gg = annual_gross_growth.groupby('Year').sum()
-#     df_sc = annual_stock_change.groupby('Year').sum()
-#     df_ne = annual_net_emissions.groupby('Year').sum()
-
-#     # Correctly merging all dataframes
-#     # merged_df = pd.merge(pd.merge(pd.merge(df_cs, df_ae, left_index=True, right_index=True, how='outer'),
-#     #                               df_gg, left_index=True, right_index=True, how='outer'),
-#     #                      df_sc, left_index=True, right_index=True, how='outer')
-
-#     merged_df = pd.concat([df_cs, df_ae, df_gg, df_sc, df_ne], axis=1)
-
-#     merged_df['Stock_Change'] = merged_df['Ecosystem'].diff() * (-1)
-#     merged_df.at[0, 'Stock_Change'] = 0
-
-#     return merged_df
-
-
-
+    annual_net_emission = pd.DataFrame({'Year': fi['timestep'],
+                                        'Net_Emission': 44/12 * (fi[fluxes].sum(axis=1) - fi[gross_growth].sum(axis=1)) })
 
     
+    n_steps = fm.horizon * fm.period_length
+    annual_carbon_stock.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None), xlabel="Year", ylabel="Stock (ton C)",
+        title="Annual Carbon Stock"
+    )
 
-# def compare_ws3_cbm(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, plots):
-#     import numpy as np
-#     eco_pools = biomass_pools + dom_pools
-#     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
+    annual_all_emission.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
+        title="Annual Ecosystem Carbon Emission", xlabel="Year", ylabel="Stock (ton C)"
+    )
 
-#     df_cbm = pd.DataFrame({'period': pi["timestep"] * 0.1, 
-#                        'biomass_stock': pi[biomass_pools].sum(axis=1),
-#                        'dom_stock': pi[dom_pools].sum(axis=1),
-#                        'eco_stock': pi[eco_pools].sum(axis=1)}).groupby('period').sum().iloc[1::10, :].reset_index()
-#     df_cbm['period'] = (df_cbm['period'] + 0.9).astype(int)
+    annual_stock_change.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
+        title="Annual Ecosystem Carbon Stock Change", xlabel="Year", ylabel="tons of C"
+    )
 
-#     df_cbm['eco_stock_change'] = df_cbm['eco_stock'].diff()
-#     df_cbm.at[0, 'eco_stock_change'] = 0.
+    annual_gross_growth.groupby('Year').sum().plot(
+        figsize=(5, 5), xlim=(0, n_steps), ylim=(None, None),
+        title="Annual Forest Gross Growth", xlabel="Year", ylabel="tons of C"
+    )
 
-#     df_ws3 = pd.DataFrame({'period': fm.periods,
-#                            'biomass_stock': [fm.inventory(period, 'biomass') for period in fm.periods],
-#                            'dom_stock': [fm.inventory(period, 'DOM') for period in fm.periods],
-#                            'eco_stock': [fm.inventory(period, 'ecosystem') for period in fm.periods]})
+    df_cs = annual_carbon_stock.groupby('Year').sum()
+    df_ae = annual_all_emission.groupby('Year').sum()
+    df_gg = annual_gross_growth.groupby('Year').sum()
+    df_sc = annual_stock_change.groupby('Year').sum()
+    df_ne = annual_net_emission.groupby('Year').sum()
+
+    # Correctly merging all dataframes
+    # merged_df = pd.merge(pd.merge(pd.merge(df_cs, df_ae, left_index=True, right_index=True, how='outer'),
+    #                               df_gg, left_index=True, right_index=True, how='outer'),
+    #                      df_sc, left_index=True, right_index=True, how='outer')
+
+    merged_df = pd.concat([df_cs, df_ae, df_gg, df_sc, df_ne], axis=1)
+
+    merged_df['Stock_Change'] = merged_df['Ecosystem'].diff() * (-1)
+    merged_df.at[0, 'Stock_Change'] = 0
+
+    return merged_df
+
+
+
+
+    
+
+def compare_ws3_cbm(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, plots):
+    import numpy as np
+    eco_pools = biomass_pools + dom_pools
+    pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
+
+    df_cbm = pd.DataFrame({'period': pi["timestep"] * 0.1, 
+                       'biomass_stock': pi[biomass_pools].sum(axis=1),
+                       'dom_stock': pi[dom_pools].sum(axis=1),
+                       'eco_stock': pi[eco_pools].sum(axis=1)}).groupby('period').sum().iloc[1::10, :].reset_index()
+    df_cbm['period'] = (df_cbm['period'] + 0.9).astype(int)
+
+    df_cbm['eco_stock_change'] = df_cbm['eco_stock'].diff()
+    df_cbm.at[0, 'eco_stock_change'] = 0.
+
+    df_ws3 = pd.DataFrame({'period': fm.periods,
+                           'biomass_stock': [fm.inventory(period, 'biomass') for period in fm.periods],
+                           'dom_stock': [fm.inventory(period, 'DOM') for period in fm.periods],
+                           'eco_stock': [fm.inventory(period, 'ecosystem') for period in fm.periods]})
   
 
-#     df_ws3['eco_stock_change'] = df_ws3['eco_stock'].diff()
-#     df_ws3.at[0, 'eco_stock_change'] = 0.
+    df_ws3['eco_stock_change'] = df_ws3['eco_stock'].diff()
+    df_ws3.at[0, 'eco_stock_change'] = 0.
 
-#     if plots == "whole":
-#         # Create a figure for all comparisons in one plot
-#         plt.figure(figsize=(10, 6))
+    if plots == "whole":
+        # Create a figure for all comparisons in one plot
+        plt.figure(figsize=(10, 6))
     
-#         # Plotting the ecosystem stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['eco_stock'], label='CBM Ecosystem Stock')
-#         plt.plot(df_ws3['period'], df_ws3['eco_stock'], label='WS3 Ecosystem Stock')
+        # Plotting the ecosystem stock comparison
+        plt.plot(df_cbm['period'], df_cbm['eco_stock'], label='CBM Ecosystem Stock')
+        plt.plot(df_ws3['period'], df_ws3['eco_stock'], label='WS3 Ecosystem Stock')
     
-#         # Plotting the biomass stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['biomass_stock'], label='CBM Biomass Stock')
-#         plt.plot(df_ws3['period'], df_ws3['biomass_stock'], label='WS3 Biomass Stock')
+        # Plotting the biomass stock comparison
+        plt.plot(df_cbm['period'], df_cbm['biomass_stock'], label='CBM Biomass Stock')
+        plt.plot(df_ws3['period'], df_ws3['biomass_stock'], label='WS3 Biomass Stock')
     
-#         # Plotting the DOM stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['dom_stock'], label='CBM DOM Stock')
-#         plt.plot(df_ws3['period'], df_ws3['dom_stock'], label='WS3 DOM Stock')
+        # Plotting the DOM stock comparison
+        plt.plot(df_cbm['period'], df_cbm['dom_stock'], label='CBM DOM Stock')
+        plt.plot(df_ws3['period'], df_ws3['dom_stock'], label='WS3 DOM Stock')
     
-#         # Set labels and title
-#         plt.xlabel('Period')
-#         plt.ylabel('Stock (ton C)')
-#         plt.ylim(0, None)  # Ensure y-axis starts from 0
+        # Set labels and title
+        plt.xlabel('Period')
+        plt.ylabel('Stock (ton C)')
+        plt.ylim(0, None)  # Ensure y-axis starts from 0
     
-#         # Customize x-axis ticks to show every 2 periods
-#         ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
-#         plt.xticks(ticks)
+        # Customize x-axis ticks to show every 2 periods
+        ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
+        plt.xticks(ticks)
         
-#         # Add a legend to differentiate the lines
-#         plt.legend()
+        # Add a legend to differentiate the lines
+        plt.legend()
 
-#     if plots == "individual":
-#         # Create a figure with subplots
-#         fig, axs = plt.subplots(3, 1, figsize=(8, 12))
+    if plots == "individual":
+        # Create a figure with subplots
+        fig, axs = plt.subplots(3, 1, figsize=(8, 12))
         
-#         # Define x-axis ticks (0 to 20 with a step of 2)
-#         ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
+        # Define x-axis ticks (0 to 20 with a step of 2)
+        ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
         
-#         # Plotting the ecosystem stock comparison
-#         axs[0].plot(df_cbm['period'], df_cbm['eco_stock'], label='cbm ecosystem stock')
-#         axs[0].plot(df_ws3['period'], df_ws3['eco_stock'], label='ws3 ecosystem stock')
-#         axs[0].set_xlabel('Period')
-#         axs[0].set_ylabel('Stock (ton C)')
-#         # axs[0].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[0].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[0].legend()
+        # Plotting the ecosystem stock comparison
+        axs[0].plot(df_cbm['period'], df_cbm['eco_stock'], label='cbm ecosystem stock')
+        axs[0].plot(df_ws3['period'], df_ws3['eco_stock'], label='ws3 ecosystem stock')
+        axs[0].set_xlabel('Period')
+        axs[0].set_ylabel('Stock (ton C)')
+        # axs[0].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[0].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[0].legend()
         
-#         # Plotting the biomass stock comparison
-#         axs[1].plot(df_cbm['period'], df_cbm['biomass_stock'], label='cbm biomass stock')
-#         axs[1].plot(df_ws3['period'], df_ws3['biomass_stock'], label='ws3 biomass stock')
-#         axs[1].set_xlabel('Period')
-#         axs[1].set_ylabel('Stock (ton C)')
-#         # axs[1].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[1].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[1].legend()
+        # Plotting the biomass stock comparison
+        axs[1].plot(df_cbm['period'], df_cbm['biomass_stock'], label='cbm biomass stock')
+        axs[1].plot(df_ws3['period'], df_ws3['biomass_stock'], label='ws3 biomass stock')
+        axs[1].set_xlabel('Period')
+        axs[1].set_ylabel('Stock (ton C)')
+        # axs[1].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[1].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[1].legend()
         
-#         # Plotting the DOM stock comparison
-#         axs[2].plot(df_cbm['period'], df_cbm['dom_stock'], label='cbm dom stock')
-#         axs[2].plot(df_ws3['period'], df_ws3['dom_stock'], label='ws3 dom stock')
-#         axs[2].set_xlabel('Period')
-#         axs[2].set_ylabel('Stock (ton C)')
-#         # axs[2].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[2].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[2].legend()
+        # Plotting the DOM stock comparison
+        axs[2].plot(df_cbm['period'], df_cbm['dom_stock'], label='cbm dom stock')
+        axs[2].plot(df_ws3['period'], df_ws3['dom_stock'], label='ws3 dom stock')
+        axs[2].set_xlabel('Period')
+        axs[2].set_ylabel('Stock (ton C)')
+        # axs[2].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[2].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[2].legend()
 
-#     # Adjust layout to prevent overlap
-#     plt.tight_layout()
+    # Adjust layout to prevent overlap
+    plt.tight_layout()
 
-#     # Show the combined plot
-#     plt.show()
+    # Show the combined plot
+    plt.show()
 
-#     return df_cbm, df_ws3
-
-
-# def compare_ws3_cbm_both(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, ecosystem_decay_emissions_pools, GrossGrowth_pools, plots):
-#     import numpy as np
-#     eco_pools = biomass_pools + dom_pools
-#     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
-#     fi = cbm_output.classifiers.to_pandas().merge(cbm_output.flux.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
-
-#     df_cbm = pd.DataFrame({'period': pi["timestep"] * 0.1, 
-#                        'biomass_stock': pi[biomass_pools].sum(axis=1),
-#                        'dom_stock': pi[dom_pools].sum(axis=1),
-#                        'eco_stock': pi[eco_pools].sum(axis=1),
-#                        'ecosystem_decay_emissions': 44/12 * fi[ecosystem_decay_emissions_pools].sum(axis=1),
-#                        'gross_growth': 44/12 * -1* fi[GrossGrowth_pools].sum(axis=1),
-#                        'net_emissions': 44/12 * ( fi[ecosystem_decay_emissions_pools].sum(axis=1) - fi[GrossGrowth_pools].sum(axis=1)) }).groupby('period').sum().iloc[1::10, :].reset_index()
-#     df_cbm['period'] = (df_cbm['period'] + 0.9).astype(int)
+    return df_cbm, df_ws3
 
 
-#     df_cbm['eco_stock_change'] = df_cbm['eco_stock'].diff()
-#     df_cbm.at[0, 'eco_stock_change'] = 0.
+def compare_ws3_cbm_both(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, ecosystem_decay_emissions_pools, GrossGrowth_pools, plots):
+    import numpy as np
+    eco_pools = biomass_pools + dom_pools
+    pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
+    fi = cbm_output.classifiers.to_pandas().merge(cbm_output.flux.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
 
-#     df_ws3 = pd.DataFrame({'period': fm.periods,
-#                            'biomass_stock': [fm.inventory(period, 'biomass') for period in fm.periods],
-#                            'dom_stock': [fm.inventory(period, 'DOM') for period in fm.periods],
-#                            'eco_stock': [fm.inventory(period, 'ecosystem') for period in fm.periods],
-#                           'net_emissions': [fm.inventory(period, 'net_emissions') for period in fm.periods]})
+    df_cbm = pd.DataFrame({'period': pi["timestep"] * 0.1, 
+                       'biomass_stock': pi[biomass_pools].sum(axis=1),
+                       'dom_stock': pi[dom_pools].sum(axis=1),
+                       'eco_stock': pi[eco_pools].sum(axis=1),
+                       'ecosystem_decay_emissions': 44/12 * fi[ecosystem_decay_emissions_pools].sum(axis=1),
+                       'gross_growth': 44/12 * -1* fi[GrossGrowth_pools].sum(axis=1),
+                       'net_emission': 44/12 * ( fi[ecosystem_decay_emissions_pools].sum(axis=1) - fi[GrossGrowth_pools].sum(axis=1)) }).groupby('period').sum().iloc[1::10, :].reset_index()
+    df_cbm['period'] = (df_cbm['period'] + 0.9).astype(int)
+
+
+    df_cbm['eco_stock_change'] = df_cbm['eco_stock'].diff()
+    df_cbm.at[0, 'eco_stock_change'] = 0.
+
+    df_ws3 = pd.DataFrame({'period': fm.periods,
+                           'biomass_stock': [fm.inventory(period, 'biomass') for period in fm.periods],
+                           'dom_stock': [fm.inventory(period, 'DOM') for period in fm.periods],
+                           'eco_stock': [fm.inventory(period, 'ecosystem') for period in fm.periods],
+                          'net_emission': [fm.inventory(period, 'net_emission') for period in fm.periods]})
   
 
-#     df_ws3['eco_stock_change'] = df_ws3['eco_stock'].diff()
-#     df_ws3.at[0, 'eco_stock_change'] = 0.
+    df_ws3['eco_stock_change'] = df_ws3['eco_stock'].diff()
+    df_ws3.at[0, 'eco_stock_change'] = 0.
 
-#     if plots == "whole":
-#         # Create a figure for all comparisons in one plot
-#         plt.figure(figsize=(10, 6))
+    if plots == "whole":
+        # Create a figure for all comparisons in one plot
+        plt.figure(figsize=(10, 6))
     
-#         # Plotting the ecosystem stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['eco_stock'], label='CBM Ecosystem Stock')
-#         plt.plot(df_ws3['period'], df_ws3['eco_stock'], label='WS3 Ecosystem Stock')
+        # Plotting the ecosystem stock comparison
+        plt.plot(df_cbm['period'], df_cbm['eco_stock'], label='CBM Ecosystem Stock')
+        plt.plot(df_ws3['period'], df_ws3['eco_stock'], label='WS3 Ecosystem Stock')
     
-#         # Plotting the biomass stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['biomass_stock'], label='CBM Biomass Stock')
-#         plt.plot(df_ws3['period'], df_ws3['biomass_stock'], label='WS3 Biomass Stock')
+        # Plotting the biomass stock comparison
+        plt.plot(df_cbm['period'], df_cbm['biomass_stock'], label='CBM Biomass Stock')
+        plt.plot(df_ws3['period'], df_ws3['biomass_stock'], label='WS3 Biomass Stock')
     
-#         # Plotting the DOM stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['dom_stock'], label='CBM DOM Stock')
-#         plt.plot(df_ws3['period'], df_ws3['dom_stock'], label='WS3 DOM Stock')
+        # Plotting the DOM stock comparison
+        plt.plot(df_cbm['period'], df_cbm['dom_stock'], label='CBM DOM Stock')
+        plt.plot(df_ws3['period'], df_ws3['dom_stock'], label='WS3 DOM Stock')
 
-#         # Plotting the Net emissions comparison
-#         plt.plot(df_cbm['period'], df_cbm['net_emissions'], label='CBM Net Emissions')
-#         plt.plot(df_ws3['period'], df_ws3['net_emissions'], label='WS3 Net Emissions')
+        # Plotting the Net emissions comparison
+        plt.plot(df_cbm['period'], df_cbm['net_emission'], label='CBM Net Emissions')
+        plt.plot(df_ws3['period'], df_ws3['net_emission'], label='WS3 Net Emissions')
         
-#         # Set labels and title
-#         plt.xlabel('Period')
-#         plt.ylabel('Stock (ton C)')
-#         plt.ylim(0, None)  # Ensure y-axis starts from 0
+        # Set labels and title
+        plt.xlabel('Period')
+        plt.ylabel('Stock (ton C)')
+        plt.ylim(0, None)  # Ensure y-axis starts from 0
     
-#         # Customize x-axis ticks to show every 2 periods
-#         ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
-#         plt.xticks(ticks)
+        # Customize x-axis ticks to show every 2 periods
+        ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
+        plt.xticks(ticks)
         
-#         # Add a legend to differentiate the lines
-#         plt.legend()
+        # Add a legend to differentiate the lines
+        plt.legend()
 
-#     if plots == "individual":
-#         # Create a figure with subplots
-#         fig, axs = plt.subplots(4, 1, figsize=(8, 12))
+    if plots == "individual":
+        # Create a figure with subplots
+        fig, axs = plt.subplots(4, 1, figsize=(8, 12))
         
-#         # Define x-axis ticks (0 to 20 with a step of 2)
-#         ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
+        # Define x-axis ticks (0 to 20 with a step of 2)
+        ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
         
-#         # Plotting the ecosystem stock comparison
-#         axs[0].plot(df_cbm['period'], df_cbm['eco_stock'], label='cbm ecosystem stock')
-#         axs[0].plot(df_ws3['period'], df_ws3['eco_stock'], label='ws3 ecosystem stock')
-#         axs[0].set_xlabel('Period')
-#         axs[0].set_ylabel('Stock (ton C)')
-#         # axs[0].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[0].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[0].legend()
+        # Plotting the ecosystem stock comparison
+        axs[0].plot(df_cbm['period'], df_cbm['eco_stock'], label='cbm ecosystem stock')
+        axs[0].plot(df_ws3['period'], df_ws3['eco_stock'], label='ws3 ecosystem stock')
+        axs[0].set_xlabel('Period')
+        axs[0].set_ylabel('Stock (ton C)')
+        # axs[0].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[0].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[0].legend()
         
-#         # Plotting the biomass stock comparison
-#         axs[1].plot(df_cbm['period'], df_cbm['biomass_stock'], label='cbm biomass stock')
-#         axs[1].plot(df_ws3['period'], df_ws3['biomass_stock'], label='ws3 biomass stock')
-#         axs[1].set_xlabel('Period')
-#         axs[1].set_ylabel('Stock (ton C)')
-#         # axs[1].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[1].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[1].legend()
+        # Plotting the biomass stock comparison
+        axs[1].plot(df_cbm['period'], df_cbm['biomass_stock'], label='cbm biomass stock')
+        axs[1].plot(df_ws3['period'], df_ws3['biomass_stock'], label='ws3 biomass stock')
+        axs[1].set_xlabel('Period')
+        axs[1].set_ylabel('Stock (ton C)')
+        # axs[1].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[1].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[1].legend()
         
-#         # Plotting the DOM stock comparison
-#         axs[2].plot(df_cbm['period'], df_cbm['dom_stock'], label='cbm dom stock')
-#         axs[2].plot(df_ws3['period'], df_ws3['dom_stock'], label='ws3 dom stock')
-#         axs[2].set_xlabel('Period')
-#         axs[2].set_ylabel('Stock (ton C)')
-#         # axs[2].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[2].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[2].legend()
+        # Plotting the DOM stock comparison
+        axs[2].plot(df_cbm['period'], df_cbm['dom_stock'], label='cbm dom stock')
+        axs[2].plot(df_ws3['period'], df_ws3['dom_stock'], label='ws3 dom stock')
+        axs[2].set_xlabel('Period')
+        axs[2].set_ylabel('Stock (ton C)')
+        # axs[2].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[2].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[2].legend()
        
-#         # Plotting the DOM stock comparison
-#         axs[3].plot(df_cbm['period'], df_cbm['net_emissions'], label='cbm net emissions')
-#         axs[3].plot(df_ws3['period'], df_ws3['net_emissions'], label='ws3 net emissions')
-#         axs[3].set_xlabel('Period')
-#         axs[3].set_ylabel('Carbon emission')
-#         # axs[3].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[3].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[3].legend()
+        # Plotting the DOM stock comparison
+        axs[3].plot(df_cbm['period'], df_cbm['net_emission'], label='cbm net emissions')
+        axs[3].plot(df_ws3['period'], df_ws3['net_emission'], label='ws3 net emissions')
+        axs[3].set_xlabel('Period')
+        axs[3].set_ylabel('Carbon emission')
+        # axs[3].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[3].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[3].legend()
     
-#     # Adjust layout to prevent overlap
-#     plt.tight_layout()
+    # Adjust layout to prevent overlap
+    plt.tight_layout()
 
-#     # Show the combined plot
-#     plt.show()
+    # Show the combined plot
+    plt.show()
 
-#     return df_cbm, df_ws3
-
-
+    return df_cbm, df_ws3
 
 
-# def compare_ws3_cbm_exactmatch(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, plots):
-#     import numpy as np
-#     eco_pools = biomass_pools + dom_pools
-#     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
-#                                                   left_on=["identifier", "timestep"], 
-#                                                   right_on=["identifier", "timestep"])
 
-#     df_cbm = pd.DataFrame({'period': pi["timestep"] * 0.1, 
-#                        'biomass_stock': pi[biomass_pools].sum(axis=1),
-#                        'dom_stock': pi[dom_pools].sum(axis=1),
-#                        'eco_stock': pi[eco_pools].sum(axis=1)}).groupby('period').sum().iloc[1::10, :].reset_index()
-#     df_cbm['period'] = (df_cbm['period'] + 0.9).astype(int)
 
-#     df_cbm['eco_stock_change'] = df_cbm['eco_stock'].diff()
-#     df_cbm.at[0, 'eco_stock_change'] = 0.
+def compare_ws3_cbm_exactmatch(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, plots):
+    import numpy as np
+    eco_pools = biomass_pools + dom_pools
+    pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
 
-#     # df_ws3 = pd.DataFrame({'period': fm.periods,
-#     #                        'biomass_stock': [sum(fm.inventory(period, pool) for pool in ['biomass']) for period in fm.periods],
-#     #                        'dom_stock': [sum(fm.inventory(period, pool) for pool in ['DOM']) for period in fm.periods],
-#     #                        'eco_stock': [sum(fm.inventory(period, pool) for pool in ['ecosystem']) for period in fm.periods]})
+    df_cbm = pd.DataFrame({'period': pi["timestep"] * 0.1, 
+                       'biomass_stock': pi[biomass_pools].sum(axis=1),
+                       'dom_stock': pi[dom_pools].sum(axis=1),
+                       'eco_stock': pi[eco_pools].sum(axis=1)}).groupby('period').sum().iloc[1::10, :].reset_index()
+    df_cbm['period'] = (df_cbm['period'] + 0.9).astype(int)
+
+    df_cbm['eco_stock_change'] = df_cbm['eco_stock'].diff()
+    df_cbm.at[0, 'eco_stock_change'] = 0.
+
+    # df_ws3 = pd.DataFrame({'period': fm.periods,
+    #                        'biomass_stock': [sum(fm.inventory(period, pool) for pool in ['biomass']) for period in fm.periods],
+    #                        'dom_stock': [sum(fm.inventory(period, pool) for pool in ['DOM']) for period in fm.periods],
+    #                        'eco_stock': [sum(fm.inventory(period, pool) for pool in ['ecosystem']) for period in fm.periods]})
   
-#     df_ws3 = pd.DataFrame({'period': fm.periods,
-#                            'biomass_stock': [sum(fm.inventory(period, pool)/fm.inventory(period) for pool in ['biomass']) for period in fm.periods],
-#                            'dom_stock': [sum(fm.inventory(period, pool)/fm.inventory(period) for pool in ['DOM']) for period in fm.periods],
-#                            'eco_stock': [sum(fm.inventory(period, pool)/fm.inventory(period) for pool in ['ecosystem']) for period in fm.periods]})
+    df_ws3 = pd.DataFrame({'period': fm.periods,
+                           'biomass_stock': [sum(fm.inventory(period, pool)/fm.inventory(period) for pool in ['biomass']) for period in fm.periods],
+                           'dom_stock': [sum(fm.inventory(period, pool)/fm.inventory(period) for pool in ['DOM']) for period in fm.periods],
+                           'eco_stock': [sum(fm.inventory(period, pool)/fm.inventory(period) for pool in ['ecosystem']) for period in fm.periods]})
 
-#     df_ws3['eco_stock_change'] = df_ws3['eco_stock'].diff()
-#     df_ws3.at[0, 'eco_stock_change'] = 0.
+    df_ws3['eco_stock_change'] = df_ws3['eco_stock'].diff()
+    df_ws3.at[0, 'eco_stock_change'] = 0.
 
-#     if plots == "whole":
-#         # Create a figure for all comparisons in one plot
-#         plt.figure(figsize=(10, 6))
+    if plots == "whole":
+        # Create a figure for all comparisons in one plot
+        plt.figure(figsize=(10, 6))
     
-#         # Plotting the ecosystem stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['eco_stock'], label='CBM Ecosystem Stock')
-#         plt.plot(df_ws3['period'], df_ws3['eco_stock'], label='WS3 Ecosystem Stock')
+        # Plotting the ecosystem stock comparison
+        plt.plot(df_cbm['period'], df_cbm['eco_stock'], label='CBM Ecosystem Stock')
+        plt.plot(df_ws3['period'], df_ws3['eco_stock'], label='WS3 Ecosystem Stock')
     
-#         # Plotting the biomass stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['biomass_stock'], label='CBM Biomass Stock')
-#         plt.plot(df_ws3['period'], df_ws3['biomass_stock'], label='WS3 Biomass Stock')
+        # Plotting the biomass stock comparison
+        plt.plot(df_cbm['period'], df_cbm['biomass_stock'], label='CBM Biomass Stock')
+        plt.plot(df_ws3['period'], df_ws3['biomass_stock'], label='WS3 Biomass Stock')
     
-#         # Plotting the DOM stock comparison
-#         plt.plot(df_cbm['period'], df_cbm['dom_stock'], label='CBM DOM Stock')
-#         plt.plot(df_ws3['period'], df_ws3['dom_stock'], label='WS3 DOM Stock')
+        # Plotting the DOM stock comparison
+        plt.plot(df_cbm['period'], df_cbm['dom_stock'], label='CBM DOM Stock')
+        plt.plot(df_ws3['period'], df_ws3['dom_stock'], label='WS3 DOM Stock')
     
-#         # Set labels and title
-#         plt.xlabel('Period')
-#         plt.ylabel('Stock (ton C)')
-#         plt.ylim(0, None)  # Ensure y-axis starts from 0
+        # Set labels and title
+        plt.xlabel('Period')
+        plt.ylabel('Stock (ton C)')
+        plt.ylim(0, None)  # Ensure y-axis starts from 0
     
-#         # Customize x-axis ticks to show every 2 periods
-#         ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
-#         plt.xticks(ticks)
+        # Customize x-axis ticks to show every 2 periods
+        ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
+        plt.xticks(ticks)
         
-#         # Add a legend to differentiate the lines
-#         plt.legend()
+        # Add a legend to differentiate the lines
+        plt.legend()
 
-#     if plots == "individual":
-#         # Create a figure with subplots
-#         fig, axs = plt.subplots(3, 1, figsize=(8, 12))
+    if plots == "individual":
+        # Create a figure with subplots
+        fig, axs = plt.subplots(3, 1, figsize=(8, 12))
         
-#         # Define x-axis ticks (0 to 20 with a step of 2)
-#         ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
+        # Define x-axis ticks (0 to 20 with a step of 2)
+        ticks = np.arange(df_cbm['period'].min()-1, df_cbm['period'].max() + 1, 2)
         
-#         # Plotting the ecosystem stock comparison
-#         axs[0].plot(df_cbm['period'], df_cbm['eco_stock'], label='cbm ecosystem stock')
-#         axs[0].plot(df_ws3['period'], df_ws3['eco_stock'], label='ws3 ecosystem stock')
-#         axs[0].set_xlabel('Period')
-#         axs[0].set_ylabel('Stock (ton C)')
-#         # axs[0].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[0].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[0].legend()
+        # Plotting the ecosystem stock comparison
+        axs[0].plot(df_cbm['period'], df_cbm['eco_stock'], label='cbm ecosystem stock')
+        axs[0].plot(df_ws3['period'], df_ws3['eco_stock'], label='ws3 ecosystem stock')
+        axs[0].set_xlabel('Period')
+        axs[0].set_ylabel('Stock (ton C)')
+        # axs[0].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[0].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[0].legend()
         
-#         # Plotting the biomass stock comparison
-#         axs[1].plot(df_cbm['period'], df_cbm['biomass_stock'], label='cbm biomass stock')
-#         axs[1].plot(df_ws3['period'], df_ws3['biomass_stock'], label='ws3 biomass stock')
-#         axs[1].set_xlabel('Period')
-#         axs[1].set_ylabel('Stock (ton C)')
-#         # axs[1].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[1].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[1].legend()
+        # Plotting the biomass stock comparison
+        axs[1].plot(df_cbm['period'], df_cbm['biomass_stock'], label='cbm biomass stock')
+        axs[1].plot(df_ws3['period'], df_ws3['biomass_stock'], label='ws3 biomass stock')
+        axs[1].set_xlabel('Period')
+        axs[1].set_ylabel('Stock (ton C)')
+        # axs[1].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[1].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[1].legend()
         
-#         # Plotting the DOM stock comparison
-#         axs[2].plot(df_cbm['period'], df_cbm['dom_stock'], label='cbm dom stock')
-#         axs[2].plot(df_ws3['period'], df_ws3['dom_stock'], label='ws3 dom stock')
-#         axs[2].set_xlabel('Period')
-#         axs[2].set_ylabel('Stock (ton C)')
-#         # axs[2].set_ylim(0, None)  # Set y-axis to start from 0
-#         axs[2].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
-#         axs[2].legend()
+        # Plotting the DOM stock comparison
+        axs[2].plot(df_cbm['period'], df_cbm['dom_stock'], label='cbm dom stock')
+        axs[2].plot(df_ws3['period'], df_ws3['dom_stock'], label='ws3 dom stock')
+        axs[2].set_xlabel('Period')
+        axs[2].set_ylabel('Stock (ton C)')
+        # axs[2].set_ylim(0, None)  # Set y-axis to start from 0
+        axs[2].set_xticks(ticks)  # Set x-axis ticks to show every 2 periods
+        axs[2].legend()
 
-#     # Adjust layout to prevent overlap
-#     plt.tight_layout()
+    # Adjust layout to prevent overlap
+    plt.tight_layout()
 
-#     # Show the combined plot
-#     plt.show()
+    # Show the combined plot
+    plt.show()
 
-#     return df_cbm, df_ws3
+    return df_cbm, df_ws3
 
 
 def plugin_c_curves_both(fm, c_curves_p, c_curves_f):
@@ -1995,18 +2082,9 @@ def plugin_c_curves_both(fm, c_curves_p, c_curves_f):
     sum_pools = ['ecosystem', 'biomass', 'DOM']  
     
     pools=sum_pools
-    fluxes=['net_emissions', 'total_emissions', 'gross_growth']
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    fluxes=['net_emission', 'total_emissions', 'gross_growth']
+      
+   
     for dtype_key in fm.dtypes:
         dt = fm.dt(dtype_key)
         mask = ('?', '?', '?', '?', dtype_key[4], dtype_key[5])
@@ -2071,26 +2149,220 @@ def plugin_c_curves_both(fm, c_curves_p, c_curves_f):
         # Add the processed mask to the set
         # processed_masks.add(mask)
 
-def plugin_c_curves(fm, c_curves_p, pools):
-    # for dtype_key in dt_tuples:
+
+def plugin_c_curves(fm, c_curves_p, c_curves_f):
+    # Dictionary to track registered curves for each dtype_key
+    # Define Carbon Pools
+    biomass_pools = ['SoftwoodMerch','SoftwoodFoliage', 'SoftwoodOther', 'SoftwoodCoarseRoots','SoftwoodFineRoots',                    
+                     'HardwoodMerch', 'HardwoodFoliage', 'HardwoodOther', 'HardwoodCoarseRoots', 'HardwoodFineRoots']
+    dom_pools = ['AboveGroundVeryFastSoil', 'BelowGroundVeryFastSoil', 'AboveGroundFastSoil', 'BelowGroundFastSoil',
+                 'MediumSoil', 'AboveGroundSlowSoil', 'BelowGroundSlowSoil', 'SoftwoodStemSnag', 'SoftwoodBranchSnag',
+                 'HardwoodStemSnag', 'HardwoodBranchSnag']
+    emissions_pools = ['CO2', 'CH4', 'CO', 'NO2']
+    products_pools = ['Products']
+    ecosystem_pools = biomass_pools + dom_pools
+    all_pools = biomass_pools + dom_pools + emissions_pools + products_pools
+    
+        # Define Carbon Fluxes
+    annual_process_fluxes = [
+        'DecayDOMCO2Emission',
+        'DeltaBiomass_AG',
+        'DeltaBiomass_BG',
+        'TurnoverMerchLitterInput',
+        'TurnoverFolLitterInput',
+        'TurnoverOthLitterInput',
+        'TurnoverCoarseLitterInput',
+        'TurnoverFineLitterInput',
+        'DecayVFastAGToAir',
+        'DecayVFastBGToAir',
+        'DecayFastAGToAir',
+        'DecayFastBGToAir',
+        'DecayMediumToAir',
+        'DecaySlowAGToAir',
+        'DecaySlowBGToAir',
+        'DecaySWStemSnagToAir',
+        'DecaySWBranchSnagToAir',
+        'DecayHWStemSnagToAir',
+        'DecayHWBranchSnagToAir'
+    ]
+    
+    npp_fluxes=[
+        'DeltaBiomass_AG', 
+        'DeltaBiomass_BG'
+    ]
+    
+    decay_emissions_fluxes = [
+        'DecayVFastAGToAir',
+        'DecayVFastBGToAir',
+        'DecayFastAGToAir',
+        'DecayFastBGToAir',
+        'DecayMediumToAir',
+        'DecaySlowAGToAir',
+        'DecaySlowBGToAir',
+        'DecaySWStemSnagToAir',
+        'DecaySWBranchSnagToAir',
+        'DecayHWStemSnagToAir',
+        'DecayHWBranchSnagToAir'
+    ]
+    
+    disturbance_production_fluxes = [
+        'DisturbanceSoftProduction',
+        'DisturbanceHardProduction',
+        'DisturbanceDOMProduction'   
+    ]
+    
+    disturbance_emissions_fluxes = [
+        'DisturbanceMerchToAir',
+        'DisturbanceFolToAir',
+        'DisturbanceOthToAir',
+        'DisturbanceCoarseToAir',
+        'DisturbanceFineToAir',
+        'DisturbanceVFastAGToAir',
+        'DisturbanceVFastBGToAir',
+        'DisturbanceFastAGToAir',
+        'DisturbanceFastBGToAir',
+        'DisturbanceMediumToAir',
+        'DisturbanceSlowAGToAir',
+        'DisturbanceSlowBGToAir',
+        'DisturbanceSWStemSnagToAir',
+        'DisturbanceSWBranchSnagToAir',
+        'DisturbanceHWStemSnagToAir',
+        'DisturbanceHWBranchSnagToAir'   
+    ]
+    
+    all_fluxes = [
+        'DisturbanceCO2Production',
+        'DisturbanceCH4Production',
+        'DisturbanceCOProduction',
+        'DisturbanceBioCO2Emission',
+        'DisturbanceBioCH4Emission',
+        'DisturbanceBioCOEmission',
+        'DecayDOMCO2Emission',
+        'DisturbanceSoftProduction',
+        'DisturbanceHardProduction',
+        'DisturbanceDOMProduction',
+        'DeltaBiomass_AG',
+        'DeltaBiomass_BG',
+        'TurnoverMerchLitterInput',
+        'TurnoverFolLitterInput',
+        'TurnoverOthLitterInput',
+        'TurnoverCoarseLitterInput',
+        'TurnoverFineLitterInput',
+        'DecayVFastAGToAir',
+        'DecayVFastBGToAir',
+        'DecayFastAGToAir',
+        'DecayFastBGToAir',
+        'DecayMediumToAir',
+        'DecaySlowAGToAir',
+        'DecaySlowBGToAir',
+        'DecaySWStemSnagToAir',
+        'DecaySWBranchSnagToAir',
+        'DecayHWStemSnagToAir',
+        'DecayHWBranchSnagToAir',
+        'DisturbanceMerchToAir',
+        'DisturbanceFolToAir',
+        'DisturbanceOthToAir',
+        'DisturbanceCoarseToAir',
+        'DisturbanceFineToAir',
+        'DisturbanceDOMCO2Emission',
+        'DisturbanceDOMCH4Emission',
+        'DisturbanceDOMCOEmission',
+        'DisturbanceMerchLitterInput',
+        'DisturbanceFolLitterInput',
+        'DisturbanceOthLitterInput',
+        'DisturbanceCoarseLitterInput',
+        'DisturbanceFineLitterInput',
+        'DisturbanceVFastAGToAir',
+        'DisturbanceVFastBGToAir',
+        'DisturbanceFastAGToAir',
+        'DisturbanceFastBGToAir',
+        'DisturbanceMediumToAir',
+        'DisturbanceSlowAGToAir',
+        'DisturbanceSlowBGToAir',
+        'DisturbanceSWStemSnagToAir',
+        'DisturbanceSWBranchSnagToAir',
+        'DisturbanceHWStemSnagToAir',
+        'DisturbanceHWBranchSnagToAir'
+    ]
+    
+    grossgrowth_ag = [
+        "DeltaBiomass_AG",
+        "TurnoverMerchLitterInput",
+        "TurnoverFolLitterInput",
+        "TurnoverOthLitterInput",
+    ]
+    
+    grossgrowth_bg = [
+        "DeltaBiomass_BG",
+        "TurnoverCoarseLitterInput",
+        "TurnoverFineLitterInput",
+    ]
+    
+    product_flux = [
+         "DisturbanceSoftProduction",
+         "DisturbanceHardProduction",
+         "DisturbanceDOMProduction",
+    ]
+    
+    # Define Sum Carbon Pools and Sum Carbon Fluxes
+    total_emission = decay_emissions_fluxes + disturbance_emissions_fluxes
+    gross_growth = grossgrowth_ag + grossgrowth_bg
+    
+    sum_pools = ['ecosystem', 'biomass', 'DOM']
+    sum_fluxes = ['total_emission', 'gross_growth', 'net_emission']
+    
+    
+    registered_curves = {}
+
     for dtype_key in fm.dtypes:
         dt = fm.dt(dtype_key)
-        mask = ('?', '?', '?', '?', dtype_key[4], dtype_key[5])
+        mask = ('?', '?',  dtype_key[2], '?', dtype_key[4])
+        
         for _mask, ytype, curves in fm.yields:
-            if _mask != mask: continue # we know there will be a match so this works
-            print('found match for mask', mask)
-            # print('found match for development key', dtype_key)
+            if _mask != mask: 
+                continue  # Only proceed if the mask matches
+
+            # print('found match for mask', mask)
+
+            # Initialize the tracking of registered curves for the dtype_key if not already done
+            if dtype_key not in registered_curves:
+                registered_curves[dtype_key] = set()
+
+            # Register pool curves
             pool_data = c_curves_p.loc[' '.join(dtype_key)]
-            for yname in pools:
-                points = list(zip(pool_data.index.values, pool_data[yname]))
-                curve = fm.register_curve(ws3.core.Curve(yname, 
-                                                         points=points, 
-                                                         type='a', 
-                                                         is_volume=False,
-                                                         xmax=fm.max_age,
-                                                         period_length=fm.period_length))
-                curves.append((yname, curve))
-                dt.add_ycomp('a', yname, curve)
+            for yname in sum_pools:
+                if yname not in registered_curves[dtype_key]:  # Check if curve is already registered
+                    points = list(zip(pool_data.index.values, pool_data[yname]))
+                    curve = fm.register_curve(ws3.core.Curve(yname, 
+                                                             points=points, 
+                                                             type='a', 
+                                                             is_volume=False,
+                                                             xmax=fm.max_age,
+                                                             period_length=fm.period_length))
+                    curves.append((yname, curve))
+                    dt.add_ycomp('a', yname, curve)
+
+                    # Mark the curve as registered
+                    registered_curves[dtype_key].add(yname)
+
+            # Register flux curves
+            flux_data = c_curves_f.loc[' '.join(dtype_key)]
+            for yname in sum_fluxes:
+                if yname not in registered_curves[dtype_key]:  # Check if curve is already registered
+                    points = list(zip(flux_data.index.values, flux_data[yname]))
+                    curve = fm.register_curve(ws3.core.Curve(yname, 
+                                                             points=points, 
+                                                             type='a', 
+                                                             is_volume=False,
+                                                             xmax=fm.max_age,
+                                                             period_length=fm.period_length))
+                    curves.append((yname, curve))
+                    dt.add_ycomp('a', yname, curve)
+
+                    # Mark the curve as registered
+                    registered_curves[dtype_key].add(yname)
+
+
 
 
 
@@ -2364,40 +2636,45 @@ def track_system_emission(fm, half_life_solid_wood=30, half_life_paper=2, propor
     return fig, ax, df
 
 
+
+
 ################################################
 # KPI indicatores 
 ################################################
-def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'): 
+def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     import numpy as np
     import matplotlib.pyplot as plt
     import os
     import pandas as pd
     
-    canfi_map_inverse = {'1211': 'AC', 
-                         '1201': 'AT', 
-                         '304': 'BL', 
-                         '1303': 'EP', 
-                         '500': 'FDI', 
-                         '402': 'HW',
-                         '403': 'HM',
-                         '204': 'PL', 
-                         '204': 'PLI', 
-                         '101': 'SB', 
-                         '104': 'SE', 
-                         '105': 'SW', 
-                         '100': 'SX',
-                         '100': 'S',
-                         '1201': 'AT+SX',
-                         '100': 'SX+AT'}
+    canfi_map_inverse = {
+        '1211': 'AC', 
+        '1201': 'AT', 
+        '304': 'BL', 
+        '1303': 'EP', 
+        '500': 'FDI', 
+        '402': 'HW',
+        '403': 'HM',
+        '204': 'PLI', 
+        '101': 'SB', 
+        '104': 'SE', 
+        '105': 'SW', 
+        '100': 'SX',
+        '1200': 'SPP',
+        '206': 'ALB',
+        '1308': 'PAP',
+        '702': 'PLI'
+    }
     
-    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX']
+    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP']
     Bal = ['B', 'BA', 'BG', 'BL']
-    Cedar = ['CW', 'YC']
+    Cedar = ['CW', 'YC', 'PLI']
     Alder = ['D', 'DR']
     DougFir = ['F', 'FD', 'FDC', 'FDI']
     Hem = ['H', 'HM', 'HW']
-    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY']
-    Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT']
+    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB']
+    Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB']
+    Birch = ['PAP']
     
     def find_corresponding_species(number):
         values = canfi_map_inverse.get(str(number))
@@ -2422,13 +2699,11 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
                 return 'Pine'
             elif value in Spruce:
                 return 'Spruce'
+            elif value in Birch:
+                return 'Birch'
         
         return "No matching set found."
     
-    # Define old growth threshold in years
-    # old_growth_threshold = 100
-    
-    # Store old growth data
     old_growth_data = {0: {}, 10: {}}  # For time periods 0 and 10
     
     bin_edges = np.arange(0, 480, 20)
@@ -2440,7 +2715,8 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
         'DougFir': '#00FFFF',
         'Hem': '#1E90FF',
         'Pine': '#9400D3',
-        'Spruce': '#FF00FF'
+        'Spruce': '#FF00FF',
+        'Birch': '#800080'
     }  
     
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
@@ -2448,28 +2724,33 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     for idx, time_period in enumerate([0, 10]):
         cumulative_hist = np.zeros(len(bin_edges) - 1)
         
-        for i, theme3 in enumerate(fm.theme_basecodes(3)):
-            data = fm.age_class_distribution(time_period, mask=f'? ? ? {theme3} ? ?')
+        # Dictionary to accumulate histograms by species
+        species_hist_data = {species: np.zeros(len(bin_edges) - 1) for species in colors.keys()}
+        
+        for theme3 in fm.theme_basecodes(3):
+            data = fm.age_class_distribution(time_period, mask=f'? ? ? {theme3} ?')
             x_values = list(data.keys())
             y_values = list(data.values())
             
             hist, _ = np.histogram(x_values, bins=bin_edges, weights=y_values)
             
             species = find_corresponding_species(theme3)
-            axes[idx].bar(bin_edges[:-1], hist, width=20, bottom=cumulative_hist, color=colors[species], edgecolor='black', alpha=0.7, label=f'Species {species}')
-            
+            species_hist_data[species] += hist
+
             # Calculate old growth area for this species
-            # old_growth_area = sum(y for x, y in data.items() if x >= old_growth_threshold)
-            # old_growth_data[time_period][species] = old_growth_data[time_period].get(species, 0) + old_growth_area
-            old_growth_area = fm.inventory(time_period, 'ogi', mask=f'? ? ? {theme3} ? ?')
+            old_growth_area = fm.inventory(time_period, 'ogi', mask=f'? ? ? {theme3} ?')
             old_growth_data[time_period][species] = old_growth_data[time_period].get(species, 0) + old_growth_area
-            
-            cumulative_hist += hist
+
+        # Plot each species only once with the accumulated histogram data
+        for species, hist in species_hist_data.items():
+            if np.any(hist):  # Only plot species with non-zero histogram data
+                axes[idx].bar(bin_edges[:-1], hist, width=20, bottom=cumulative_hist, color=colors[species], edgecolor='black', alpha=0.7, label=f'Species {species}')
+                cumulative_hist += hist
         
         axes[idx].set_xlabel('Age')
         axes[idx].set_ylabel('Area (ha)')
         axes[idx].set_title(f'Age Distribution at time period {time_period}')
-        axes[idx].legend()  
+        axes[idx].legend()
     
     plt.tight_layout()
     
@@ -2484,19 +2765,19 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     plt.close()   
     print(f"Plot saved to {file_path}")
     
- # Convert old growth data to a DataFrame for better display
+    # Convert old growth data to a DataFrame for better display
     old_growth_df = pd.DataFrame(old_growth_data).fillna(0)
     old_growth_df['Difference'] = old_growth_df[10] - old_growth_df[0]
     
     # Print old growth data as a table
-    print(f"\nOld Growth Data (in hectares). \nNegative value indicates loss of old growth and positive value indicates gain of old growth.")
+    print("\nOld Growth Data (in hectares). \nNegative value indicates loss of old growth and positive value indicates gain of old growth.")
     print(old_growth_df)
     
     # Print conclusion about diversity change based on difference
     if old_growth_df['Difference'].sum() < 0:
-        print(f"\nOverall diversity has **decreased** by {old_growth_df['Difference'].sum():.2f} hectares from time period 0 to time period 10.")
+        print(f"\nOld growth has **decreased** by {old_growth_df['Difference'].sum():.2f} hectares from time period 0 to time period 10.")
     else:
-        print(f"\nOverall diversity has **increased** by {old_growth_df['Difference'].sum():.2f} hectares from time period 0 to time period 10.")
+        print(f"\nOld growth has **increased** by {old_growth_df['Difference'].sum():.2f} hectares from time period 0 to time period 10.")
     
     # Plot clustered column chart for old growth areas by species for each time period
     fig, ax = plt.subplots(figsize=(7, 6))
@@ -2522,107 +2803,78 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     return old_growth_df
 
 
-
-
 def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.'):
     import numpy as np
     import matplotlib.pyplot as plt
     import os
     import math
 
-    # Mapping numbers to species codes
-    canfi_map_inverse = {'1211': 'AC', 
-                         '1201': 'AT', 
-                         '304': 'BL', 
-                         '1303': 'EP', 
-                         '500': 'FDI', 
-                         '402': 'HW',
-                         '403': 'HM',
-                         '204': 'PL', 
-                         '204': 'PLI', 
-                         '101': 'SB', 
-                         '104': 'SE', 
-                         '105': 'SW', 
-                         '100': 'SX',
-                         '100': 'S',
-                         '1201': 'AT+SX',
-                         '100': 'SX+AT'}
-       
-    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX']
-    Bal = ['B', 'BA', 'BG', 'BL']
-    Cedar = ['CW', 'YC']
-    Alder = ['D', 'DR']
-    DougFir = ['F', 'FD', 'FDC', 'FDI']
-    Hem = ['H', 'HM', 'HW']
-    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY']
-    Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT']
 
-    colors = {
-        'Aspen': '#FF0000',
-        'Bal': '#FF8C00',
-        'Cedar': '#FFD700',
-        'Alder': '#00FF00',
-        'DougFir': '#00FFFF',
-        'Hem': '#1E90FF',
-        'Pine': '#9400D3',
-        'Spruce': '#FF00FF'
+    # Species codes mapping and color dictionary
+    canfi_map_inverse = {
+        '1211': 'AC', '1201': 'AT', '304': 'BL', '1303': 'EP', '500': 'FDI',
+        '402': 'HW', '403': 'HM', '204': 'PL', '204': 'PLI', '101': 'SB', 
+        '104': 'SE', '105': 'SW', '100': 'SX', '1201': 'AT+SX', '100': 'SX+AT',
+        '1200': 'SPP', '206': 'ALB', '1308': 'PAP', '702': 'PLI'
+    }
+    
+    # Species groups
+    species_groups = {
+        'Aspen': ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP'],
+        'Bal': ['B', 'BA', 'BG', 'BL'],
+        'Cedar': ['CW', 'YC', 'PLI'],
+        'Alder': ['D', 'DR'],
+        'DougFir': ['F', 'FD', 'FDC', 'FDI'],
+        'Hem': ['H', 'HM', 'HW'],
+        'Pine': ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB'],
+        'Spruce': ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT'],
+        'Birch': ['PAP']
     }
 
-    def find_corresponding_species(number):
-        values = canfi_map_inverse.get(str(number))
-        if not values:
-            return "No corresponding value found."
-        
-        values = values.split('+')
-        for value in values:
-            if value in Aspen:
-                return 'Aspen'
-            elif value in Bal:
-                return 'Bal'
-            elif value in Cedar:
-                return 'Cedar'
-            elif value in Alder:
-                return 'Alder'
-            elif value in DougFir:
-                return 'DougFir'
-            elif value in Hem:
-                return 'Hem'
-            elif value in Pine:
-                return 'Pine'
-            elif value in Spruce:
-                return 'Spruce'
-        
-        return "No matching set found."
     
+    # Colors for each species group
+    colors = {
+        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
+        'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080'
+    }
+
+    # Helper function to determine species group based on species code
+    def find_corresponding_species(number):
+        code = canfi_map_inverse.get(str(number))
+        if code:
+            for species, codes in species_groups.items():
+                if code in codes:
+                    return species
+        return "Unknown Species"
+
+    # Calculate Shannon index and species portions
     def calculate_shannon_index(fm, time_period):
-        portion = {}
+        portions = {}
         total_volume = fm.inventory(time_period, 'totvol')
-
+        
         for theme3 in fm.theme_basecodes(3):
-            volume = fm.inventory(time_period, 'totvol', mask=f'? ? ? {theme3} ? ?')
-            portion[theme3] = volume / total_volume if total_volume > 0 else 0
-
-        print(f"\nPortion for time period {time_period}:")
-        for theme3, value in portion.items():
-            species = find_corresponding_species(theme3)
-            print(f"{species}: {value:.4f}")
-
+            volume = fm.inventory(time_period, 'totvol', mask=f'? ? ? {theme3} ?')
+            portions[theme3] = volume / total_volume if total_volume > 0 else 0
+        
         shannon_index = -sum(
-            portion[theme3] * math.log(portion[theme3]) / math.log(len(fm.theme_basecodes(3)))
-            for theme3 in portion if portion[theme3] > 0
+            portions[theme3] * math.log(portions[theme3]) / math.log(len(fm.theme_basecodes(3)))
+            for theme3 in portions if portions[theme3] > 0
         )
-        return shannon_index, portion
+        
+        # Convert theme3 keys to species names
+        named_portions = {find_corresponding_species(theme3): value for theme3, value in portions.items()}
+        
+        return shannon_index, named_portions
 
+    # Calculate for both time periods
     shannon_0, portion_0 = calculate_shannon_index(fm, time_period=0)
     shannon_10, portion_10 = calculate_shannon_index(fm, time_period=10)
-
-    print(f"\nShannon Evennes Index for time period 0: {shannon_0:.4f}")
-    print(f"Shannon Evennes Index for time period 10: {shannon_10:.4f}")
-
     
-    portion_0_named = {find_corresponding_species(theme3): value for theme3, value in portion_0.items()}
-    portion_10_named = {find_corresponding_species(theme3): value for theme3, value in portion_10.items()}
-    
+    print(f"\nShannon Evenness Index for time period 0: {shannon_0:.4f}")
+    print(f"Shannon Evenness Index for time period 10: {shannon_10:.4f}")
+
+    # Calculate change in Shannon index
     shannon_difference = shannon_10 - shannon_0
     if shannon_difference < 0:
         print(f"\nDiversity has **decreased** by {abs(shannon_difference) * 100:.2f}% from time 0 to time 10.")
@@ -2630,27 +2882,33 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.'):
         print(f"\nDiversity has **increased** by {abs(shannon_difference) * 100:.2f}% from time 0 to time 10.")
 
     # Prepare data for pie charts (portions of each species for both time periods)
-    labels_0 = [find_corresponding_species(theme3) for theme3 in portion_0.keys()]
-    sizes_0 = [value for value in portion_0.values()]
-    labels_10 = [find_corresponding_species(theme3) for theme3 in portion_10.keys()]
-    sizes_10 = [value for value in portion_10.values()]
-
+    labels_0 = list(portion_0.keys())
+    sizes_0 = list(portion_0.values())
+    labels_10 = list(portion_10.keys())
+    sizes_10 = list(portion_10.values())
+    
     # Create subplots for pie charts (one row, two columns)
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-
+    
     # Pie chart for time period 0
-    axes[0].pie(sizes_0, labels=labels_0, colors=[colors[find_corresponding_species(theme3)] for theme3 in portion_0.keys()], autopct='%1.1f%%', startangle=140)
+    axes[0].pie(
+        sizes_0, labels=labels_0, 
+        colors=[colors[species] for species in labels_0], autopct='%1.1f%%', startangle=140
+    )
     axes[0].set_title("Species Distribution at Time Period 0")
-
+    
     # Pie chart for time period 10
-    axes[1].pie(sizes_10, labels=labels_10, colors=[colors[find_corresponding_species(theme3)] for theme3 in portion_10.keys()], autopct='%1.1f%%', startangle=140)
+    axes[1].pie(
+        sizes_10, labels=labels_10, 
+        colors=[colors[species] for species in labels_10], autopct='%1.1f%%', startangle=140
+    )
     axes[1].set_title("Species Distribution at Time Period 10")
-
-    # Create a dynamic legend with species present in both time periods
-    unique_species = set(labels_0 + labels_10)  # Unique species from both time periods
+    
+    # Unique species for legend
+    unique_species = set(labels_0 + labels_10)
     handles = [plt.Rectangle((0, 0), 1, 1, color=colors[species]) for species in unique_species]
     fig.legend(handles, unique_species, loc="upper right", title="Species Present")
-
+    
     # Save figure
     folder_path = os.path.join('./outputs/fig', case_study)
     if not os.path.exists(folder_path):
@@ -2663,8 +2921,7 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.'):
     plt.close()
     
     print(f"Pie Charts for Time Periods 0 and 10 saved to {file_path}")
-    return portion_10_named, shannon_10
-
+    return portion_10, shannon_10
 
 
 
@@ -2703,7 +2960,7 @@ def bootstrap_ogi(fm, tvy_name='totvol', ra1_type='cmai', ra2_type='cyld', rc1=[
     ra1 defaults to age at which total volume MAI curve culminates.
     ra2 defaults to age at which total volume curve culminates.
     """
-    mask = mask if mask else ('?', '?', '?', '?', '?', '?')
+    mask = mask if mask else ('?', '?', '?', '?', '?')
     fm.ynames.add(yname)
     for dtk in fm.unmask(mask):
         dt = fm.dtypes[dtk]
@@ -2720,6 +2977,168 @@ def bootstrap_ogi(fm, tvy_name='totvol', ra1_type='cmai', ra2_type='cyld', rc1=[
                                              xmax=fm.max_age, period_length=period_length))
         #print(dtk, c.points())
         #assert False
-        _mask = (mask[0], '?', dtk[2], dtk[3], dtk[4], dtk[5] )
+        _mask = (mask[0], '?', dtk[2], dtk[3], dtk[4])
         fm.yields.append((_mask, 'a', [(yname, c)]))
         dt.add_ycomp('a', yname, c)
+
+
+
+################################################################
+# Plot results
+################################################################
+def generate_radar_chart(data, case_study, obj_mode, output_dir="./plots/fig"):
+    """
+    Generate a radar chart from the provided data, save it as an SVG file in a case-study-specific directory, 
+    and include case study and objective mode in the file name.
+
+    Parameters:
+        data (dict): A dictionary where the keys are column names and the values are lists of data.
+        output_dir (str): The base directory where the files will be saved.
+        case_study (str): The name of the case study (used to create the folder and as part of the file name).
+        obj_mode (str): The objective mode (used as part of the file name).
+    """
+    case_study_dir = os.path.join(output_dir, case_study)
+    os.makedirs(case_study_dir, exist_ok=True)
+
+    df = pd.DataFrame(data)
+
+    for column in df.columns[1:]:
+        max_val = df[column].max()
+        min_val = df[column].min()
+        df[column] = df[column].apply(lambda x: (x - min_val) / (max_val - min_val))
+
+    categories = list(df.columns[1:])
+    N = len(categories)
+    angles = [n / float(N) * 2 * pi for n in range(N)]
+    angles += angles[:1]  
+
+    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(polar=True))
+
+    # Plot each scenario
+    for i, row in df.iterrows():
+        values = row[1:].tolist()
+        values += values[:1]  
+        if row["Scenarios"] == "Baseline":
+            ax.plot(angles, values, label=row["Scenarios"], color="black", linewidth=2)
+            ax.fill(angles, values, color="black", alpha=0.2)  
+        else:
+            ax.plot(angles, values, label=row["Scenarios"], linewidth=2)
+            ax.fill(angles, values, alpha=0.25)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories, fontsize=12)
+    ax.yaxis.grid(True)
+    ax.yaxis.set_tick_params(labelsize=10)
+    plt.title(f"{obj_mode}", fontsize=16, pad=30)
+
+    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=10)
+
+    plt.tight_layout()
+
+    file_name = f"{case_study}_{obj_mode}_radar_chart.svg"
+    file_path = os.path.join(case_study_dir, file_name)
+    plt.savefig(file_path, format='svg') 
+    plt.show()
+    plt.close(fig) 
+    print(f"Chart saved at: {file_path}")
+
+def generate_subplots_radar_chart(case_study, obj_modes, data_sets):
+    """
+    Generate a radar chart with 4 subplots for each obj_mode of the selected case study.
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12), subplot_kw=dict(polar=True))
+    axes = axes.flatten()  # Flatten for easy iteration
+
+    legend_added = False  # Track if legend has been added
+
+    for i, obj_mode in enumerate(obj_modes):
+        # Construct the key dynamically
+        data_key = f"{case_study}_{obj_mode}".lower()
+
+        ax = axes[i]
+        try:
+            # Access the dataset from the data_sets dictionary
+            data = data_sets[data_key]
+
+            # Convert the data to a DataFrame and normalize values
+            df = pd.DataFrame(data)
+            for column in df.columns[1:]:
+                max_val = df[column].max()
+                min_val = df[column].min()
+                df[column] = df[column].apply(lambda x: (x - min_val) / (max_val - min_val))
+
+            # Prepare angles for radar chart
+            categories = list(df.columns[1:])
+            N = len(categories)
+            angles = [n / float(N) * 2 * pi for n in range(N)]
+            angles += angles[:1]  # Close the circle
+
+            # Plot each scenario
+            for _, row in df.iterrows():
+                values = row[1:].tolist()
+                values += values[:1]
+
+                # Check if the scenario is "baseline"
+                if row['Scenarios'].lower() == "baseline":
+                    ax.plot(angles, values, label=row['Scenarios'], color="black", linewidth=2)
+                else:
+                    ax.plot(angles, values, label=row['Scenarios'])
+                    ax.fill(angles, values, alpha=0.1)
+
+            # Add chart features
+            ax.set_title(obj_mode, fontsize=14, pad=20)
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(categories, fontsize=10)
+            ax.yaxis.grid(True)
+            ax.yaxis.set_tick_params(labelsize=8)
+
+            # Add legend to the first subplot only
+            if not legend_added:
+                ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.2), fontsize=10)
+                legend_added = True
+        except KeyError:
+            print(f"Dataset for {data_key} not found. Skipping...")
+
+    # Adjust layout and save
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    output_dir = f'./plots/fig/{case_study}'
+    os.makedirs(output_dir, exist_ok=True)
+    file_name = f"{case_study}_radar_subplots.svg"
+    file_path = os.path.join(output_dir, file_name)
+    plt.savefig(file_path, format='svg')
+    plt.show()
+    print(f"Radar chart subplots saved at: {file_path}")
+
+def create_grouped_bar_chart(data, y_label, case_study):
+    # Extract scenarios and objective modes
+    scenarios = data["Scenarios"]
+    modes = list(data.keys())[1:]  # Exclude "Scenarios"
+
+    # Prepare data
+    values = [data[mode] for mode in modes]
+    x = np.arange(len(scenarios))  # X locations for the groups
+    width = 0.8 / len(modes)  # Width of each bar
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(14, 6))
+    for i, mode in enumerate(modes):
+        # Extract the i-th mode's values for all scenarios
+        mode_values = [value if value is not None else 0 for value in values[i]]
+        ax.bar(x + i * width, mode_values, width, label=mode)
+
+    # Add labels, title, and legend
+    ax.set_xticks(x + (len(modes) - 1) * width / 2)
+    ax.set_xticklabels(scenarios, rotation=45, ha="right", fontsize=10)
+    ax.set_ylabel(y_label, fontsize=12)
+    ax.legend(title="Objectives", fontsize=9)
+
+    plt.tight_layout()
+    output_dir = f'./plots/fig/{case_study}'
+    os.makedirs(output_dir, exist_ok=True)
+    file_name = f"{case_study}_{y_label}_indicators_subplots.svg"
+    file_path = os.path.join(output_dir, file_name)
+    plt.savefig(file_path, format='svg')
+    plt.show()
+    print(f"Radar chart subplots saved at: {file_path}")
+
+

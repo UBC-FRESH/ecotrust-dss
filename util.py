@@ -61,7 +61,29 @@ def schedule_harvest_areacontrol(fm, max_harvest=1., period=None, acode='harvest
     sch = fm.compile_schedule()
     return sch
 
+def forest_type_indicator(fm, case_study, obj_mode, scenario_name):
 
+    primary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '1')) for period in fm.periods]
+    secondary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '2')) for period in fm.periods]
+    data = {'period':fm.periods, 
+            'primary forest': primary_forest,
+            'secondary forest': secondary_forest
+           }
+    df = pd.DataFrame(data)
+    # Plotting the stacked bar graph
+    plt.bar(df['period'], df['primary forest'], label='Primary Forest')
+    plt.bar(df['period'], df['secondary forest'], bottom=df['primary forest'], label='Secondary Forest')
+    
+    # Adding labels and title
+    plt.xlabel('Period')
+    plt.ylabel('Forest area')
+    plt.title('Area of primary and secondary forests')
+    plt.legend()
+    
+    # Show the plot
+    plt.show()
+
+    return df
 
 ################################################
 # HWP effect
@@ -311,30 +333,6 @@ def compile_scenario_maxstock(fm, case_study, obj_mode, scenario_name):
     return df
 
 
-# def compile_scenario_maxstock(fm):
-#     oha = [fm.compile_product(period, '1.', acode='harvest') for period in fm.periods]
-#     ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
-#     ogs = [fm.inventory(period, 'totvol') for period in fm.periods]
-#     ocp = [fm.inventory(period, 'ecosystem') for period in fm.periods]
-#     ocf = [fm.inventory(period, 'total_emissions') for period in fm.periods]
-#     data = {'period':fm.periods, 
-#             'oha':oha, 
-#             'ohv':ohv, 
-#             'ogs':ogs,
-#             'ocp':ocp,
-#             'ocf':ocf}
-#     df = pd.DataFrame(data)
-
-
-    # csv_folder_path = os.path.join('./outputs/csv', case_study)
-    # if not os.path.exists(csv_folder_path):
-    #     os.makedirs(csv_folder_path)
-    
-    # csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_maxstock.csv')
-    # df.to_csv(csv_file_path, index=False)
-    
-    # return df
-
 
 def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
     fig, ax = plt.subplots(1, 4, figsize=(20, 5))
@@ -388,61 +386,6 @@ def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
     print(f"Plot saved to {file_path}")
     
     return fig, ax
-
-
-
-# def plot_scenario_maxstock(df):
-#     fig, ax = plt.subplots(1, 4, figsize=(20, 5))
-#     # Plot and label the first subplot for harvested area
-#     ax[0].bar(df.period, df.oha)
-#     ax[0].set_ylim(0, None)
-#     ax[0].set_title('Harvested area')
-#     ax[0].set_xlabel('Period')
-#     ax[0].set_ylabel('Area (ha)')
-    
-#     # Plot and label the second subplot for harvested volume
-#     ax[1].bar(df.period, df.ohv)
-#     ax[1].set_ylim(0, None)
-#     ax[1].set_title('Harvested volume')
-#     ax[1].set_xlabel('Period')
-#     ax[1].set_ylabel('Volume (m3)')
-
-#     # Plot and label the third subplot for growing stock
-#     ax[2].bar(df.period, df.ogs)
-#     ax[2].set_ylim(0, None)
-#     ax[2].set_xlabel('Period')
-#     ax[2].set_title('Growing Stock')
-#     ax[2].set_ylabel('Volume (m3)')
-
-#     # Plot and label the fourth subplot for ecosystem carbon stock
-#     ax[3].bar(df.period, df.ocp)
-#     ax[3].set_ylim(0, None)
-#     ax[3].set_title('Ecosystem C stock')
-#     ax[3].set_xlabel('Period')
-#     ax[3].set_ylabel('Stock (ton)')
-
-#     # # Plot and label the fifth subplot for total carbon emission
-#     # ax[4].bar(df.period, df.ocf)
-#     # ax[4].set_ylim(0, None)
-#     # ax[4].set_title('Total Carbon Emission')
-#     # ax[4].set_xlabel('Period')
-#     # ax[4].set_ylabel('tons of C')
-
-#     plt.tight_layout()
-    
-#     # folder_path = os.path.join('./outputs/fig', case_study)
-#     # if not os.path.exists(folder_path):
-#     #     os.makedirs(folder_path)   
-#     # file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling_maxstock.pdf"
-#     # file_path = os.path.join(folder_path, file_name)
-    
-#     # # Save and show plot
-#     # plt.savefig(file_path)
-#     # plt.show()
-#     # plt.close()
-#     # print(f"Plot saved to {file_path}")
-    
-#     return fig, ax
 
 
 
@@ -681,10 +624,95 @@ def cmp_c_ci(fm, path, yname, mask=None): # product, named actions
         #result[t] = fm.inventory(t, yname=yname, age=d['age'], dtype_keys=[d['dtk']]) 
     return result
 
+#############################################################################################
 
-def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=1.0, displacement_effect=1.0, release_immediately_value=0., name='base', util=0.85, harvest_acode='harvest',
+
+
+
+
+# def cmp_c_ss_c(fm, path, expr, clt_percentage, hwp_pool_effect_value, yname, half_life_solid_wood=30, half_life_paper=2, half_life_clt= float('inf'), proportion_solid_wood=0.8, util=0.85, mask=None):
+#     """
+#     Compile constraint coefficient for total system carbon stock indicators (given ForestModel instance, 
+#     leaf-to-root-node path, and expression to evaluate).
+#     """
+#     k_wood = math.log(2) / half_life_solid_wood  # Decay rate for solid wood products (30-year half-life)
+#     k_paper = math.log(2) / half_life_paper  # Decay rate for paper (2-year half-life)
+#     k_clt = math.log(2) / half_life_clt  # Decay rate for clt (INF half-life)
+#     wood_density = 460 #kg/m3
+#     carbon_content = 0.5
+#     result = 0.
+#     sum = 0.
+#     hwp_accu_wood = 0.
+#     hwp_accu_paper = 0.
+#     hwp_accu_clt = 0.
+#     ecosystem = 0.
+#     for t, n in enumerate(path, start=1):        
+#         d = n.data()    
+#         if fm.is_harvest(d['acode']):
+#             result_hwp = fm.compile_product(t, 'totvol', d['acode'], [d['dtk']], d['age'], coeff=False) * wood_density * carbon_content/1000
+#         else:
+#             result_hwp = 0     
+#         hwp_accu_wood  = hwp_accu_wood * (1-k_wood)**10 + result_hwp * util * proportion_solid_wood * (1-clt_percentage)
+#         hwp_accu_paper = hwp_accu_paper * (1-k_paper)**10 + result_hwp * util * (1- proportion_solid_wood) 
+#         hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood 
+
+        
+#         ecosystem = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
+#         result = hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
+
+#     # Initialing a dictionary where keys are periods
+#     result_dict = {period: 0 for period in fm.periods}
+
+#     # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
+#     result_dict[fm.periods[-1]] = result
+
+#     return result_dict
+
+def cmp_c_ss_c(fm, path, yname, mask=None):
+    """
+    Compile constraint coefficient for total system carbon stock indicators (given ForestModel instance, 
+    leaf-to-root-node path, and expression to evaluate).
+    """
+    # k_wood = math.log(2) / half_life_solid_wood  # Decay rate for solid wood products (30-year half-life)
+    # k_paper = math.log(2) / half_life_paper  # Decay rate for paper (2-year half-life)
+    # k_clt = math.log(2) / half_life_clt  # Decay rate for clt (INF half-life)
+    # wood_density = 460 #kg/m3
+    # carbon_content = 0.5
+    result = 0.
+    # sum = 0.
+    # hwp_accu_wood = 0.
+    # hwp_accu_paper = 0.
+    # hwp_accu_clt = 0.
+    ecosystem = 0.
+    for t, n in enumerate(path, start=1):        
+        d = n.data()    
+        # if fm.is_harvest(d['acode']):
+        #     result_hwp = fm.compile_product(t, 'totvol', d['acode'], [d['dtk']], d['age'], coeff=False) * wood_density * carbon_content/1000
+        # else:
+        #     result_hwp = 0     
+        # hwp_accu_wood  = hwp_accu_wood * (1-k_wood)**10 + result_hwp * util * proportion_solid_wood * (1-clt_percentage)
+        # hwp_accu_paper = hwp_accu_paper * (1-k_paper)**10 + result_hwp * util * (1- proportion_solid_wood) 
+        # hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood 
+
+        
+        ecosystem = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
+        result = ecosystem
+
+    # Initialing a dictionary where keys are periods
+    result_dict = {period: 0 for period in fm.periods}
+
+    # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
+    result_dict[fm.periods[-1]] = result
+
+    return result_dict
+
+
+
+
+
+def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_effect=0., release_immediately_value=0., name='base', util=0.85, harvest_acode='harvest',
                  cflw_ha={}, cflw_hv={}, 
-                 cgen_ha={}, cgen_hv={}, cgen_gs={}, 
+                 cgen_ha={}, cgen_hv={}, cgen_gs={}, cgen_cs = {},
                  tvy_name='totvol', cp_name='ecosystem', ce_name='net_emission', obj_mode='max_hv', mask=None):
     from functools import partial
     import numpy as np
@@ -739,26 +767,114 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=1.0, displacement_
         cname = 'cgen_gs'
         coeff_funcs[cname] = partial(cmp_c_ci, yname=tvy_name, mask=None)
         cgen_data[cname] = cgen_gs
+    if cgen_cs:
+        cname = 'cgen_cs' # define general constraint (total carbon stock)
+        coeff_funcs[cname] = partial(cmp_c_ss_c, yname=cp_name, mask=None)
+        cgen_data [cname] = cgen_cs
+    # import pdb
+    # pdb.set_trace()
     return fm.add_problem(name, coeff_funcs, cflw_e, cgen_data=cgen_data, acodes=acodes, sense=sense, mask=mask)
 
-
-
-def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
+def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-    # initial_inv_equit = 869737. #ha
-    initial_gs_equit = 106582957.  #m3   
-    # initial_inv_red = 390738. #ha
-    initial_gs_red =18018809. #m3   
-    # initial_inv_gold = 191273. #ha
-    initial_gs_gold = 7017249. #m3   
-    aac_equity =  18255528. # AAC per year * 10
-    aac_red =  1072860. # AAC per year * 10
-    aac_gold =  766066. # AAC per year * 10
+
+    initial_gs =21980. #m3   
+
+    aac =  296920. # AAC per year * 10
+    cflw_ha_max_stock = {}
+    cflw_hv_max_stock = {}
+    cgen_ha_max_stock = {}
+    cgen_hv_max_stock = {}
+    cgen_gs_max_stock = {}
+    cgen_cs_max_stock = {}
+
+    print('running maximizing stock scenario')
+    cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+
+    p_max_stock = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_stock', 
+                     cflw_ha=cflw_ha_max_stock, 
+                     cflw_hv=cflw_hv_max_stock,
+                     cgen_ha=cgen_ha_max_stock,
+                     cgen_hv=cgen_hv_max_stock,
+                     cgen_gs=cgen_gs_max_stock,
+                     cgen_cs = cgen_cs_max_stock,
+                     obj_mode='max_st')
+    # breakpoint()
+    p_max_stock.solver(solver) 
+    fm.reset()
+    p_max_stock.solve()
+    ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
+    print(ohv)
+    cs_max = p_max_stock.z()
+    print('maximum stock is :', cs_max)
+
+    fm.reset()
+    # breakpoint()
+    cflw_ha_min_stock = {}
+    cflw_hv_min_stock = {}
+    cgen_ha_min_stock = {}
+    cgen_hv_min_stock = {}
+    cgen_gs_min_stock = {}
+    cgen_cs_min_stock = {}
+
+    print('running maximizing harvesting scenario')
+    cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+
+    p_min_stock = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_harvest', 
+                     cflw_ha=cflw_ha_min_stock, 
+                     cflw_hv=cflw_hv_min_stock,
+                     cgen_ha=cgen_ha_min_stock,
+                     cgen_hv=cgen_hv_min_stock,
+                     cgen_gs=cgen_gs_min_stock,
+                     cgen_cs = cgen_cs_min_stock,
+                     obj_mode='max_hv')
+    
+    p_min_stock.solver(solver) 
+    fm.reset()
+    p_min_stock.solve()
+    # breakpoint()
+    lhs_values = p_min_stock.get_all_constraints_lhs_values()
+    # print(lhs_values)
+    cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    print('minimum stock is:', cs_min)
+
+
+    epsilon = (cs_max - cs_min)/n
+    # breakpoint()
+    print(epsilon)
+    return epsilon, cs_max
+
+
+def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
+    import gurobipy as grb
+
+    initial_gs =21980. #m3   
+
+    aac =  296920. # AAC per year * 10
+
     cflw_ha = {}
     cflw_hv = {}
     cgen_ha = {}
     cgen_hv = {}
     cgen_gs = {}
+    cgen_cs = {}
 
     if scenario_name == 'no_cons': 
         # test scenario : 
@@ -769,222 +885,50 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         print('running even flow constraints scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+    elif scenario_name == 'lowest carbon stock':
+        print('running lowest carbon stock scenario')
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{10: cs_max-10*epsilon}, 'ub':{10: cs_max}}
+    elif scenario_name == 'business as usual':
+        print('running business as usual scenario')
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{10: cs_max - 8 * epsilon}, 'ub':{10: cs_max}}
+    elif scenario_name == '40% of highest carbon stock':
+        print('running 40% of highest carbon stock scenario')
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{10: cs_max-6*epsilon}, 'ub':{10: cs_max}}
+    elif scenario_name == '60% of highest carbon stock':
+        print('running 60% of highest carbon stock scenario')
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{10: cs_max-4*epsilon}, 'ub':{10: cs_max}}
+    elif scenario_name == '20% of highest carbon stock':
+        print('running 20% of highest carbon stock scenario')
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{10: cs_max-2*epsilon}, 'ub':{10: cs_max}}
+    elif scenario_name == 'highest carbon stock':
+        print('running highest carbon scenario')
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{10: cs_max}, 'ub':{10: cs_max}}
+
  
-    # Red Chris Scenarios
-    elif scenario_name == 'bau_redchrs': 
-        # Business as usual scenario for the Red Chris mining site: 
-        print('running business as usual scenario for the Red Chris mining site,')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:aac_red}, 'ub':{1:aac_red}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_90%': 
-        # Alternative scenario for the Red Chris mining site (90%_AAC): 
-        print('running the scenario for the Red Chris mining site (90%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.9*aac_red}, 'ub':{1:0.9*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_80%': 
-        # Alternative scenario for the Red Chris mining site (80%_AAC): 
-        print('running the scenario for the Red Chris mining site (80%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.8*aac_red}, 'ub':{1:0.8*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_70%': 
-        # Alternative scenario for the Red Chris mining site (70%_AAC): 
-        print('running the scenario for the Red Chris mining site (70%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.7*aac_red}, 'ub':{1:0.7*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_60%': 
-        # Alternative scenario for the Red Chris mining site (60%_AAC): 
-        print('running the scenario for the Red Chris mining site (60%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.6*aac_red}, 'ub':{1:0.6*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_50%': 
-        # Alternative scenario for the Red Chris mining site (50%_AAC): 
-        print('running the scenario for the Red Chris mining site (50%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.5*aac_red}, 'ub':{1:0.5*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_40%': 
-        # Alternative scenario for the Red Chris mining site (40%_AAC): 
-        print('running the scenario for the Red Chris mining site (40%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.4*aac_red}, 'ub':{1:0.4*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_30%': 
-        # Alternative scenario for the Red Chris mining site (30%_AAC): 
-        print('running the scenario for the Red Chris mining site (30%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.3*aac_red}, 'ub':{1:0.3*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_20%': 
-        # Alternative scenario for the Red Chris mining site (20%_AAC): 
-        print('running the scenario for the Red Chris mining site (20%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.2*aac_red}, 'ub':{1:0.2*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'redchrs_AAC_10%': 
-        # Alternative scenario for the Red Chris mining site (10%_AAC): 
-        print('running the scenario for the Red Chris mining site (10%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.1*aac_red}, 'ub':{1:0.1*aac_red+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_red*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-  
-    # Golden Bear scenarios
-    elif scenario_name == 'bau_gldbr': 
-        # Business as usual scenario for Golden Bear mining site: 
-        print('running business as usual scenario for the Golden Bear mine site')
-        cgen_hv = {'lb':{1:aac_gold}, 'ub':{1:aac_gold}}
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_red*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'gldbr_AAC_90%': 
-        # Alternative scenario for the Golden Bear mining site (90%_AAC): 
-        print('running the scenario for the Golden Bear mining site (90%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.9*aac_gold}, 'ub':{1:0.9*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'gldbr_AAC_80%': 
-        # Alternative scenario for the Golden Bear mining site (80%_AAC): 
-        print('running the scenario for the Golden Bear mining site (80%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.8*aac_gold}, 'ub':{1:0.8*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock    
-    elif scenario_name == 'gldbr_AAC_70%': 
-        # Alternative scenario for the Golden Bear mining site (70%_AAC): 
-        print('running the scenario for the Golden Bear mining site (70%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.7*aac_gold}, 'ub':{1:0.7*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock     
-    elif scenario_name == 'gldbr_AAC_60%': 
-        # Alternative scenario for the Golden Bear mining site (60%_AAC): 
-        print('running the scenario for the Golden Bear mining site (60%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.6*aac_gold}, 'ub':{1:0.6*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock 
-    elif scenario_name == 'gldbr_AAC_50%': 
-        # Alternative scenario for the Golden Bear mining site (50%_AAC): 
-        print('running the scenario for the Golden Bear mining site (50%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.5*aac_gold}, 'ub':{1:0.5*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock     
-    elif scenario_name == 'gldbr_AAC_40%': 
-        # Alternative scenario for the Golden Bear mining site (40%_AAC): 
-        print('running the scenario for the Golden Bear mining site (40%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.4*aac_gold}, 'ub':{1:0.4*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock     
-    elif scenario_name == 'gldbr_AAC_30%': 
-        # Alternative scenario for the Golden Bear mining site (30%_AAC): 
-        print('running the scenario for the Golden Bear mining site (30%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.3*aac_gold}, 'ub':{1:0.3*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock     
-    elif scenario_name == 'gldbr_AAC_20%': 
-        # Alternative scenario for the Golden Bear mining site (20%_AAC): 
-        print('running the scenario for the Golden Bear mining site (20%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.2*aac_gold}, 'ub':{1:0.2*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock     
-    elif scenario_name == 'gldbr_AAC_10%': 
-        # Alternative scenario for the Golden Bear mining site (10%_AAC): 
-        print('running the scenario for the Golden Bear mining site (10%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.1*aac_gold}, 'ub':{1:0.1*aac_gold+1}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs_gold*0.9}, 'ub':{10:initial_gs_gold*1000}} #Not less than 90% of initial growing stock 
-    
-    # Equity Silver scenarios
-    elif scenario_name == 'bau_eqtslvr': 
-        # Business as usual scenario for the Equity Silver mining site: 
-        print('running business as usual scenario for the Equity Silver mining site')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.50*aac_equity}, 'ub':{1:0.50*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'eqtslvr_AAC_90%': 
-        # Alternative scenario for the Equity Silver mining site (90%_AAC): 
-        print('running the scenario for the Equity Silver mining site (90%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.9*0.5*aac_equity}, 'ub':{1:0.9*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock
-    elif scenario_name == 'eqtslvr_AAC_80%': 
-        # Alternative scenario for the Equity Silver mining site (80%_AAC): 
-        print('running the scenario for the Equity Silver mining site (80%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.8*0.5*aac_equity}, 'ub':{1:0.8*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock    
-    elif scenario_name == 'eqtslvr_AAC_70%': 
-        # Alternative scenario for the Equity Silver mining site (70%_AAC): 
-        print('running the scenario for the Equity Silver mining site (70%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.7*0.5*aac_equity}, 'ub':{1:0.7*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
-    elif scenario_name == 'eqtslvr_AAC_60%': 
-        # Alternative scenario for the Equity Silver mining site (60%_AAC): 
-        print('running the scenario for the Equity Silver mining site (60%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.6*0.5*aac_equity}, 'ub':{1:0.6*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock           
-    elif scenario_name == 'eqtslvr_AAC_50%': 
-        # Alternative scenario for the Equity Silver mining site (50%_AAC): 
-        print('running the scenario for the Equity Silver mining site (50%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.5*0.5*aac_equity}, 'ub':{1:0.5*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
-    elif scenario_name == 'eqtslvr_AAC_40%': 
-        # Alternative scenario for the Equity Silver mining site (40%_AAC): 
-        print('running the scenario for the Equity Silver mining site (40%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.4*0.5*aac_equity}, 'ub':{1:0.4*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
-    elif scenario_name == 'eqtslvr_AAC_30%': 
-        # Alternative scenario for the Equity Silver mining site (30%_AAC): 
-        print('running the scenario for the Equity Silver mining site (30%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.3*0.5*aac_equity}, 'ub':{1:0.3*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock   
-    elif scenario_name == 'eqtslvr_AAC_20%': 
-        # Alternative scenario for the Equity Silver mining site (20%_AAC): 
-        print('running the scenario for the Equity Silver mining site (20%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.2*0.5*aac_equity}, 'ub':{1:0.2*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock       
-    elif scenario_name == 'eqtslvr_AAC_10%': 
-        # Alternative scenario for the Equity Silver mining site (10%_AAC): 
-        print('running the scenario for the Equity Silver mining site (10%_AAC),')
-        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
-        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0.1*0.5*aac_equity}, 'ub':{1:0.1*0.5*aac_equity+1}} 
-        cgen_gs = {'lb':{10:initial_gs_equit*0.9}, 'ub':{10:initial_gs_equit*1000}} #Not less than 90% of initial growing stock  
     else:
         assert False # bad scenario name
     
@@ -999,12 +943,13 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
                      cgen_ha=cgen_ha,
                      cgen_hv=cgen_hv,
                      cgen_gs=cgen_gs,
+                     cgen_cs = cgen_cs,
                     obj_mode=obj_mode)
     p.solver(solver)
     
     fm.reset()
     p.solve()
-    
+
     if p.status() != ws3.opt.STATUS_OPTIMAL:
         print('Model not optimal.')
         df = None   
@@ -1029,7 +974,7 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         plot_scenario_minemission(df, case_study, obj_mode, scenario_name)
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode) 
-        
+    forest_type = forest_type_indicator(fm, case_study, obj_mode, scenario_name)    
     print("------------------------------------------------")
     kpi_socioeconomic(fm)
     print("------------------------------------------------")
@@ -1181,7 +1126,7 @@ def run_cbm(df_carbon_stock, df_carbon_emission, df_carbon_emission_immed, df_em
     return annual_carbon_stocks, annual_net_emission
 
 
-def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode):   
+def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max):   
     decay_rates = {'plumber':math.log(2.)/35., 'ppaper':math.log(2.)/2., 'pclt': math.log(2.)/float('inf')}
     product_coefficients = {'plumber': (1-0.2) * (1 - clt_percentage), 'ppaper':0.2, 'pclt': (1-0.2)*clt_percentage}
     products = ['plumber', 'ppaper', 'pclt']
@@ -1189,8 +1134,8 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
     co2_concrete_manu_factor = 298.
     concrete_density = 2400 #kg/m3
     co2_concrete_landfill_factor = 0.00517 * concrete_density
-    # sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name, solver='gurobi')
-    sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, scenario_name) #This uses pulp
+    # sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name, solver='gurobi')
+    sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name) #This uses pulp
 
     # df = compile_scenario(fm, case_study, obj_mode, scenario_name)
     # plot_scenario(df, case_study, obj_mode, scenario_name)
@@ -1305,7 +1250,7 @@ def scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, 
 
 
 
-def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode):
+def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode, show_graph=False):
     import os  
     
     # Calculate the difference in old growth area between the two scenarios
@@ -1329,7 +1274,8 @@ def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode):
     ax.set_ylabel("Difference in Old Growth Area (ha)")
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    if show_graph:
+        plt.show()
     
     folder_path = os.path.join('./outputs/fig', case_study)
     if not os.path.exists(folder_path):
@@ -1337,7 +1283,8 @@ def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode):
     file_name = f"{case_study}_{obj_mode}_kpi_age_difference.pdf"
     file_path = os.path.join(folder_path, file_name)  
     plt.savefig(file_path)
-    plt.show()
+    if show_graph:
+        plt.show()
     plt.close()   
     print(f"Plot saved to {file_path}")
 
@@ -1347,7 +1294,7 @@ def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode):
 
 
 
-def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shannon_10_base, case_study, obj_mode):
+def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shannon_10_base, case_study, obj_mode, show_graph=False):
     
     import matplotlib.pyplot as plt
     import os
@@ -1380,7 +1327,8 @@ def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shanno
     file_name = f"{case_study}_{obj_mode}_kpi_species_difference_pie.pdf"
     file_path = os.path.join(folder_path, file_name)
     plt.savefig(file_path)
-    plt.show()
+    if show_graph:
+        plt.show()
     plt.close()
     
     print(f"Pie Charts for Time Periods 0 and 10 saved to {file_path}")
@@ -1419,7 +1367,7 @@ def compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_ec
     
 
 
-def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, pickle_output_base,  
+def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max, pickle_output_base,  
                   pickle_output_alter):
     from util import stock_emission_scenario, plot_scenarios, scenario_dif, stock_emission_scenario_equivalent, compare_kpi_age, kpi_socioeconomic, compare_kpi_socioeconomic
 
@@ -1443,7 +1391,7 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
             cbm_output_2 = pickle.load(f)
         print("Loaded cbm_output_1 and cbm_output_2 from pickle files.")
     else:
-        cbm_output_1, cbm_output_2 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode)
+        cbm_output_1, cbm_output_2 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
         with open(pickle_file_1, 'wb') as f:
             pickle.dump(cbm_output_1, f)
         with open(pickle_file_2, 'wb') as f:
@@ -1484,18 +1432,14 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
         print("Loaded cbm_output_3 and cbm_output_4 from pickle files.")
     else:
         # Run base scenario if pickle files don't exist
-        if case_study == 'redchris':
-            scenario_name = 'bau_redchrs'
-        elif case_study == 'equitysilver':
-            scenario_name = 'bau_eqtslvr'
-        elif case_study == 'goldenbear':
-            scenario_name = 'bau_gldbr'
+        if case_study == 'ecotrust':
+            scenario_name = 'business as usual'
         elif case_study == 'test':
             scenario_name = 'no_cons'
         else:
             raise ValueError('Invalid case_study: %s' % case_study)
 
-        cbm_output_3, cbm_output_4 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode)
+        cbm_output_3, cbm_output_4 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
         
         # Save cbm_output_3 and cbm_output_4 as pickle
         with open(pickle_file_3, 'wb') as f:
@@ -2316,7 +2260,7 @@ def plugin_c_curves(fm, c_curves_p, c_curves_f):
 
     for dtype_key in fm.dtypes:
         dt = fm.dt(dtype_key)
-        mask = ('?', '?',  dtype_key[2], '?', dtype_key[4])
+        mask = ('?', '?',  dtype_key[2], '?', dtype_key[4], dtype_key[5])
         
         for _mask, ytype, curves in fm.yields:
             if _mask != mask: 
@@ -2641,7 +2585,7 @@ def track_system_emission(fm, half_life_solid_wood=30, half_life_paper=2, propor
 ################################################
 # KPI indicatores 
 ################################################
-def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
+def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=False):
     import numpy as np
     import matplotlib.pyplot as plt
     import os
@@ -2728,7 +2672,7 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
         species_hist_data = {species: np.zeros(len(bin_edges) - 1) for species in colors.keys()}
         
         for theme3 in fm.theme_basecodes(3):
-            data = fm.age_class_distribution(time_period, mask=f'? ? ? {theme3} ?')
+            data = fm.age_class_distribution(time_period, mask=f'? ? ? {theme3} ? ?')
             x_values = list(data.keys())
             y_values = list(data.values())
             
@@ -2738,7 +2682,7 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
             species_hist_data[species] += hist
 
             # Calculate old growth area for this species
-            old_growth_area = fm.inventory(time_period, 'ogi', mask=f'? ? ? {theme3} ?')
+            old_growth_area = fm.inventory(time_period, 'ogi', mask=f'? ? ? {theme3} ? ?')
             old_growth_data[time_period][species] = old_growth_data[time_period].get(species, 0) + old_growth_area
 
         # Plot each species only once with the accumulated histogram data
@@ -2761,7 +2705,8 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     file_name = f"{case_study}_{obj_mode}_{scenario_name}_age_distribution.pdf"
     file_path = os.path.join(folder_path, file_name)  
     plt.savefig(file_path)
-    plt.show()
+    if show_graph:
+        plt.show()
     plt.close()   
     print(f"Plot saved to {file_path}")
     
@@ -2795,7 +2740,8 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     clustered_chart_file = f"{case_study}_{obj_mode}_{scenario_name}_old_growth_comparison.pdf"
     clustered_chart_path = os.path.join(folder_path, clustered_chart_file)
     plt.savefig(clustered_chart_path)
-    plt.show()
+    if show_graph:
+        plt.show()
     plt.close()
     
     print(f"Clustered column plot saved to {clustered_chart_path}")
@@ -2803,7 +2749,7 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.'):
     return old_growth_df
 
 
-def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.'):
+def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=False):
     import numpy as np
     import matplotlib.pyplot as plt
     import os
@@ -2854,7 +2800,7 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.'):
         total_volume = fm.inventory(time_period, 'totvol')
         
         for theme3 in fm.theme_basecodes(3):
-            volume = fm.inventory(time_period, 'totvol', mask=f'? ? ? {theme3} ?')
+            volume = fm.inventory(time_period, 'totvol', mask=f'? ? ? {theme3} ? ?')
             portions[theme3] = volume / total_volume if total_volume > 0 else 0
         
         shannon_index = -sum(
@@ -2917,7 +2863,8 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.'):
     file_name = f"{case_study}_{obj_mode}_{scenario_name}_species_pie.pdf"
     file_path = os.path.join(folder_path, file_name)
     plt.savefig(file_path)
-    plt.show()
+    if show_graph:
+        plt.show()
     plt.close()
     
     print(f"Pie Charts for Time Periods 0 and 10 saved to {file_path}")
@@ -2960,7 +2907,7 @@ def bootstrap_ogi(fm, tvy_name='totvol', ra1_type='cmai', ra2_type='cyld', rc1=[
     ra1 defaults to age at which total volume MAI curve culminates.
     ra2 defaults to age at which total volume curve culminates.
     """
-    mask = mask if mask else ('?', '?', '?', '?', '?')
+    mask = mask if mask else ('?', '?', '?', '?', '?', '?')
     fm.ynames.add(yname)
     for dtk in fm.unmask(mask):
         dt = fm.dtypes[dtk]
@@ -2977,7 +2924,7 @@ def bootstrap_ogi(fm, tvy_name='totvol', ra1_type='cmai', ra2_type='cyld', rc1=[
                                              xmax=fm.max_age, period_length=period_length))
         #print(dtk, c.points())
         #assert False
-        _mask = (mask[0], '?', dtk[2], dtk[3], dtk[4])
+        _mask = (mask[0], '?', dtk[2], dtk[3], dtk[4], dtk[5])
         fm.yields.append((_mask, 'a', [(yname, c)]))
         dt.add_ycomp('a', yname, c)
 

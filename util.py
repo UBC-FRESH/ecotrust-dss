@@ -624,50 +624,6 @@ def cmp_c_ci(fm, path, yname, mask=None): # product, named actions
         #result[t] = fm.inventory(t, yname=yname, age=d['age'], dtype_keys=[d['dtk']]) 
     return result
 
-#############################################################################################
-
-
-
-
-
-# def cmp_c_ss_c(fm, path, expr, clt_percentage, hwp_pool_effect_value, yname, half_life_solid_wood=30, half_life_paper=2, half_life_clt= float('inf'), proportion_solid_wood=0.8, util=0.85, mask=None):
-#     """
-#     Compile constraint coefficient for total system carbon stock indicators (given ForestModel instance, 
-#     leaf-to-root-node path, and expression to evaluate).
-#     """
-#     k_wood = math.log(2) / half_life_solid_wood  # Decay rate for solid wood products (30-year half-life)
-#     k_paper = math.log(2) / half_life_paper  # Decay rate for paper (2-year half-life)
-#     k_clt = math.log(2) / half_life_clt  # Decay rate for clt (INF half-life)
-#     wood_density = 460 #kg/m3
-#     carbon_content = 0.5
-#     result = 0.
-#     sum = 0.
-#     hwp_accu_wood = 0.
-#     hwp_accu_paper = 0.
-#     hwp_accu_clt = 0.
-#     ecosystem = 0.
-#     for t, n in enumerate(path, start=1):        
-#         d = n.data()    
-#         if fm.is_harvest(d['acode']):
-#             result_hwp = fm.compile_product(t, 'totvol', d['acode'], [d['dtk']], d['age'], coeff=False) * wood_density * carbon_content/1000
-#         else:
-#             result_hwp = 0     
-#         hwp_accu_wood  = hwp_accu_wood * (1-k_wood)**10 + result_hwp * util * proportion_solid_wood * (1-clt_percentage)
-#         hwp_accu_paper = hwp_accu_paper * (1-k_paper)**10 + result_hwp * util * (1- proportion_solid_wood) 
-#         hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood 
-
-        
-#         ecosystem = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
-#         result = hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
-
-#     # Initialing a dictionary where keys are periods
-#     result_dict = {period: 0 for period in fm.periods}
-
-#     # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
-#     result_dict[fm.periods[-1]] = result
-
-#     return result_dict
-
 def cmp_c_ss_c(fm, path, yname, mask=None):
     """
     Compile constraint coefficient for total system carbon stock indicators (given ForestModel instance, 
@@ -706,7 +662,18 @@ def cmp_c_ss_c(fm, path, yname, mask=None):
 
     return result_dict
 
-
+def cmp_c_z_bd(fm, path, expr, mask=None):
+    """
+    Compile objective function coefficient (given ForestModel instance, 
+    leaf-to-root-node path, and expression to evaluate).
+    """
+    result = 0.
+    for t, n in enumerate(path, start=1):        
+        d = n.data()
+        if mask and not fm.match_mask(mask, d['dtk']): continue
+        if fm.is_harvest(d['acode']):
+            result += fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
+    return result
 
 
 
@@ -733,6 +700,9 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
     elif obj_mode == 'min_ha': # minimize harvest area
         sense = ws3.opt.SENSE_MINIMIZE 
         zexpr = '1.'
+    elif obj_mode == 'max_bd': # minimize harvest area
+        sense = ws3.opt.SENSE_MINIMIZE 
+        zexpr = '1.'
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode)        
     if obj_mode == 'max_hv':
@@ -743,6 +713,8 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
         coeff_funcs['z'] = partial(cmp_c_ss, clt_percentage=clt_percentage, hwp_pool_effect_value=hwp_pool_effect_value, expr=zexpr, yname=cp_name) # define objective function coefficient function for total system carbon stock
     elif obj_mode == 'min_em':
         coeff_funcs['z'] = partial(cmp_c_se, clt_percentage=clt_percentage, hwp_pool_effect_value=hwp_pool_effect_value, displacement_effect=displacement_effect, release_immediately_value=release_immediately_value,expr=zexpr, yname=ce_name) # define objective function coefficient function for total system emission
+    elif obj_mode == 'max_bd':
+        coeff_funcs['z'] = partial(cmp_c_z_bd, expr=zexpr, mask=('?', '?', '?', '?', '?', '1')) # 
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode)
 
@@ -861,6 +833,93 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     print(epsilon)
     return epsilon, cs_max
 
+def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
+    import gurobipy as grb
+
+    initial_gs =21980. #m3   
+
+    aac =  296920. # AAC per year * 10
+    cflw_ha_max_bd = {}
+    cflw_hv_max_bd = {}
+    cgen_ha_max_bd = {}
+    cgen_hv_max_bd = {}
+    cgen_gs_max_bd = {}
+    cgen_cs_max_bd = {}
+
+    print('running maximizing biodiversity scenario')
+    cflw_ha_max_bd = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_max_bd = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_max_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+
+    p_max_bd = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_biodiversity', 
+                     cflw_ha=cflw_ha_max_bd, 
+                     cflw_hv=cflw_hv_max_bd,
+                     cgen_ha=cgen_ha_max_bd,
+                     cgen_hv=cgen_hv_max_bd,
+                     cgen_gs=cgen_gs_max_bd,
+                     cgen_cs = cgen_cs_max_bd,
+                     obj_mode='max_bd')
+    # breakpoint()
+    p_max_bd.solver(solver) 
+    fm.reset()
+    p_max_bd.solve()
+    primary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '1')) for period in fm.periods]
+    secondary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '2')) for period in fm.periods]
+    print(primary_forest)
+    print(secondary_forest)
+    bd_max = p_max_bd.z()
+    print('maximum biodiversity is :', bd_max)
+
+    fm.reset()
+    # breakpoint()
+    cflw_ha_min_bd = {}
+    cflw_hv_min_bd = {}
+    cgen_ha_min_bd = {}
+    cgen_hv_min_bd = {}
+    cgen_gs_min_bd = {}
+    cgen_cs_min_bd = {}
+
+    print('running maximizing harvesting scenario')
+    cflw_ha_min_bd = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_min_bd = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_min_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_cs_min_bd = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+
+    p_min_bd = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_harvest', 
+                     cflw_ha=cflw_ha_min_bd, 
+                     cflw_hv=cflw_hv_min_bd,
+                     cgen_ha=cgen_ha_min_bd,
+                     cgen_hv=cgen_hv_min_bd,
+                     cgen_gs=cgen_gs_min_bd,
+                     cgen_cs = cgen_cs_min_bd,
+                     obj_mode='max_hv')
+    
+    p_min_bd.solver(solver) 
+    fm.reset()
+    p_min_bd.solve()
+    # breakpoint()
+    lhs_values = p_min_bd.get_all_constraints_lhs_values()
+    # print(lhs_values)
+    bd_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    print('minimum biodiversity is:', bd_min)
+
+
+    epsilon = (bd_max - bd_min)/n
+    # breakpoint()
+    print(epsilon)
+    return epsilon, bd_max
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb

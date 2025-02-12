@@ -662,24 +662,48 @@ def cmp_c_ss_c(fm, path, yname, mask=None):
 
     return result_dict
 
-def cmp_c_z_bd(fm, path, expr, mask=None):
+def cmp_c_z_bd(fm, path, expr):
     """
     Compile objective function coefficient (given ForestModel instance, 
     leaf-to-root-node path, and expression to evaluate).
-    """
-    result = 0.
-    for t, n in enumerate(path, start=1):        
-        d = n.data()
-        if mask and not fm.match_mask(mask, d['dtk']): continue
-        if fm.is_harvest(d['acode']):
-            result += fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
+    """   
+    result = fm.inventory(fm.period_length, mask = ('?', '?', '?', '?', '?', '1'))
+    # result = 0.
+    # for t, n in enumerate(path, start=1):        
+    #     d = n.data()
+    #     if fm.is_harvest(d['acode']):
+    #         # breakpoint()
+    #         # import pdb
+    #         # pdb.set_trace()
+    #         if d['dtk'][-1] == '1':
+    #             result += fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
     return result
 
+def cmp_c_c_bd(fm, path, expr):
+    """
+    Compile constraint coefficient for biodiversity(given ForestModel instance, 
+    leaf-to-root-node path, and expression to evaluate).
+    """
+    result = fm.inventory(fm.period_length, mask = ('?', '?', '?', '?', '?', '1'))
+    # result = 0.
+    # for t, n in enumerate(path, start=1):        
+    #     d = n.data()
+    #     if fm.is_harvest(d['acode']):
+    #         # breakpoint()
+    #         # import pdb
+    #         # pdb.set_trace()
+    #         if d['dtk'][-1] == '1':
+    #             result += fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
+    # Initialing a dictionary where keys are periods
+    result_dict = {period: 0 for period in fm.periods}
+    # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
+    result_dict[fm.periods[-1]] = result
+    return result_dict
 
 
 def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_effect=0., release_immediately_value=0., name='base', util=0.85, harvest_acode='harvest',
                  cflw_ha={}, cflw_hv={}, 
-                 cgen_ha={}, cgen_hv={}, cgen_gs={}, cgen_cs = {},
+                 cgen_ha={}, cgen_hv={}, cgen_gs={}, cgen_cs = {}, cgen_bd = {},
                  tvy_name='totvol', cp_name='ecosystem', ce_name='net_emission', obj_mode='max_hv', mask=None):
     from functools import partial
     import numpy as np
@@ -701,7 +725,7 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
         sense = ws3.opt.SENSE_MINIMIZE 
         zexpr = '1.'
     elif obj_mode == 'max_bd': # minimize harvest area
-        sense = ws3.opt.SENSE_MINIMIZE 
+        sense = ws3.opt.SENSE_MAXIMIZE 
         zexpr = '1.'
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode)        
@@ -714,7 +738,7 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
     elif obj_mode == 'min_em':
         coeff_funcs['z'] = partial(cmp_c_se, clt_percentage=clt_percentage, hwp_pool_effect_value=hwp_pool_effect_value, displacement_effect=displacement_effect, release_immediately_value=release_immediately_value,expr=zexpr, yname=ce_name) # define objective function coefficient function for total system emission
     elif obj_mode == 'max_bd':
-        coeff_funcs['z'] = partial(cmp_c_z_bd, expr=zexpr, mask=('?', '?', '?', '?', '?', '1')) # 
+        coeff_funcs['z'] = partial(cmp_c_z_bd, expr=zexpr) # 
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode)
 
@@ -743,6 +767,10 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
         cname = 'cgen_cs' # define general constraint (total carbon stock)
         coeff_funcs[cname] = partial(cmp_c_ss_c, yname=cp_name, mask=None)
         cgen_data [cname] = cgen_cs
+    if cgen_bd:
+        cname = 'cgen_bd' # define general constraint (total carbon stock)
+        coeff_funcs[cname] = partial(cmp_c_c_bd, expr='1.')
+        cgen_data [cname] = cgen_bd
     # import pdb
     # pdb.set_trace()
     return fm.add_problem(name, coeff_funcs, cflw_e, cgen_data=cgen_data, acodes=acodes, sense=sense, mask=mask)
@@ -759,6 +787,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     cgen_hv_max_stock = {}
     cgen_gs_max_stock = {}
     cgen_cs_max_stock = {}
+    cgen_bd_max_stock = {}
 
     print('running maximizing stock scenario')
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
@@ -778,6 +807,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
                      cgen_hv=cgen_hv_max_stock,
                      cgen_gs=cgen_gs_max_stock,
                      cgen_cs = cgen_cs_max_stock,
+                     cgen_bd = cgen_bd_max_stock,
                      obj_mode='max_st')
     # breakpoint()
     p_max_stock.solver(solver) 
@@ -796,6 +826,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     cgen_hv_min_stock = {}
     cgen_gs_min_stock = {}
     cgen_cs_min_stock = {}
+    cgen_bd_min_stock = {}
 
     print('running maximizing harvesting scenario')
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
@@ -816,6 +847,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
                      cgen_hv=cgen_hv_min_stock,
                      cgen_gs=cgen_gs_min_stock,
                      cgen_cs = cgen_cs_min_stock,
+                     cgen_bd = cgen_bd_min_stock,
                      obj_mode='max_hv')
     
     p_min_stock.solver(solver) 
@@ -845,6 +877,7 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
     cgen_hv_max_bd = {}
     cgen_gs_max_bd = {}
     cgen_cs_max_bd = {}
+    cgen_bd_max_bd = {}
 
     print('running maximizing biodiversity scenario')
     cflw_ha_max_bd = ({p:0.05 for p in fm.periods}, 1)
@@ -864,6 +897,7 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
                      cgen_hv=cgen_hv_max_bd,
                      cgen_gs=cgen_gs_max_bd,
                      cgen_cs = cgen_cs_max_bd,
+                     cgen_bd = cgen_bd_max_bd,
                      obj_mode='max_bd')
     # breakpoint()
     p_max_bd.solver(solver) 
@@ -878,47 +912,89 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
 
     fm.reset()
     # breakpoint()
-    cflw_ha_min_bd = {}
-    cflw_hv_min_bd = {}
-    cgen_ha_min_bd = {}
-    cgen_hv_min_bd = {}
-    cgen_gs_min_bd = {}
-    cgen_cs_min_bd = {}
+    cflw_ha_min_bd_1 = {}
+    cflw_hv_min_bd_1 = {}
+    cgen_ha_min_bd_1 = {}
+    cgen_hv_min_bd_1 = {}
+    cgen_gs_min_bd_1 = {}
+    cgen_cs_min_bd_1 = {}
+    cgen_bd_min_bd_1 = {}
 
-    print('running maximizing harvesting scenario')
-    cflw_ha_min_bd = ({p:0.05 for p in fm.periods}, 1)
-    cflw_hv_min_bd = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_min_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-    cgen_cs_min_bd = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+    print('running maximizing carbon stock scenario')
+    cflw_ha_min_bd_1 = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_min_bd_1 = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_min_bd_1 = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_min_bd_1 = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_bd_min_bd_1 = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
-    p_min_bd = gen_scenario(fm=fm, 
+    p_min_bd_1 = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
                      hwp_pool_effect_value=hwp_pool_effect_value,
                      displacement_effect=displacement_effect,
                      release_immediately_value=release_immediately_value,
                      name='max_harvest', 
-                     cflw_ha=cflw_ha_min_bd, 
-                     cflw_hv=cflw_hv_min_bd,
-                     cgen_ha=cgen_ha_min_bd,
-                     cgen_hv=cgen_hv_min_bd,
-                     cgen_gs=cgen_gs_min_bd,
-                     cgen_cs = cgen_cs_min_bd,
+                     cflw_ha=cflw_ha_min_bd_1, 
+                     cflw_hv=cflw_hv_min_bd_1,
+                     cgen_ha=cgen_ha_min_bd_1,
+                     cgen_hv=cgen_hv_min_bd_1,
+                     cgen_gs=cgen_gs_min_bd_1,
+                     cgen_cs = cgen_cs_min_bd_1,
+                     cgen_bd = cgen_bd_min_bd_1,
                      obj_mode='max_hv')
     
-    p_min_bd.solver(solver) 
+    p_min_bd_1.solver(solver) 
     fm.reset()
-    p_min_bd.solve()
+    p_min_bd_1.solve()
     # breakpoint()
-    lhs_values = p_min_bd.get_all_constraints_lhs_values()
+    lhs_values = p_min_bd_1.get_all_constraints_lhs_values()
     # print(lhs_values)
-    bd_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
-    print('minimum biodiversity is:', bd_min)
+    bd_min_1 = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
+    print('minimum biodiversity_1 is:', bd_min_1)
 
-
-    epsilon = (bd_max - bd_min)/n
+    fm.reset()
     # breakpoint()
-    print(epsilon)
+    cflw_ha_min_bd_2 = {}
+    cflw_hv_min_bd_2 = {}
+    cgen_ha_min_bd_2 = {}
+    cgen_hv_min_bd_2 = {}
+    cgen_gs_min_bd_2 = {}
+    cgen_cs_min_bd_2 = {}
+    cgen_bd_min_bd_2 = {}
+
+    print('running maximizing carbon stock scenario')
+    cflw_ha_min_bd_2 = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_min_bd_2 = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_min_bd_2 = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_min_bd_2 = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_bd_min_bd_2 = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+
+    p_min_bd_2 = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_carbon_stock', 
+                     cflw_ha=cflw_ha_min_bd_2, 
+                     cflw_hv=cflw_hv_min_bd_2,
+                     cgen_ha=cgen_ha_min_bd_2,
+                     cgen_hv=cgen_hv_min_bd_2,
+                     cgen_gs=cgen_gs_min_bd_2,
+                     cgen_cs = cgen_cs_min_bd_2,
+                     cgen_bd = cgen_bd_min_bd_2,
+                     obj_mode='max_st')
+    
+    p_min_bd_2.solver(solver) 
+    fm.reset()
+    p_min_bd_2.solve()
+    # breakpoint()
+    lhs_values = p_min_bd_2.get_all_constraints_lhs_values()
+    # print(lhs_values)
+    bd_min_2 = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
+    print('minimum biodiversity_2 is:', bd_min_2)
+    # bd_min = min(bd_min_1, bd_min_2)    
+    epsilon = (bd_max - bd_min_1)/n
+    # breakpoint()
+    # print(epsilon)
     return epsilon, bd_max
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
@@ -934,6 +1010,7 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
     cgen_hv = {}
     cgen_gs = {}
     cgen_cs = {}
+    cgen_bd = {}
 
     if scenario_name == 'no_cons': 
         # test scenario : 
@@ -1003,6 +1080,7 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
                      cgen_hv=cgen_hv,
                      cgen_gs=cgen_gs,
                      cgen_cs = cgen_cs,
+                     cgen_bd = cgen_bd,
                     obj_mode=obj_mode)
     p.solver(solver)
     

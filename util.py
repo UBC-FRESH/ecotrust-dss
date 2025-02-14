@@ -11,8 +11,6 @@ import pickle
 import numpy as np
 from math import pi
 
-
-
 def schedule_harvest_areacontrol(fm, max_harvest=1., period=None, acode='harvest', util=0.85, 
                                  target_masks=None, target_areas=None,
                                  target_scalefactors=None,
@@ -78,11 +76,9 @@ def forest_type_indicator(fm, case_study, obj_mode, scenario_name):
     plt.xlabel('Period')
     plt.ylabel('Forest area')
     plt.title('Area of primary and secondary forests')
-    plt.legend()
-    
+    plt.legend()    
     # Show the plot
     plt.show()
-
     return df
 
 ################################################
@@ -95,7 +91,6 @@ def calculate_initial_c_value_stock(fm, i, product_coefficient, util=0.85):
     """
     return fm.compile_product(i, f'totvol * {product_coefficient} * {util}')  * 460 * 0.5  / fm.period_length
     
-
 def calculate_c_value_stock(fm, i, product_coefficient, decay_rate, util=0.85):      
     """
     Calculate carbon stock for harvested wood products for period `i`.
@@ -107,7 +102,6 @@ def calculate_c_value_stock(fm, i, product_coefficient, decay_rate, util=0.85):
         ) * 460 * 0.5 
     )
     
-
 def hwp_carbon_stock(fm, products, product_coefficients, decay_rates, hwp_pool_effect_value):
     """
     Compile periodic harvested wood products carbon stocks data.
@@ -176,7 +170,6 @@ def hwp_carbon_emission(fm, products, product_coefficients, decay_rates, hwp_poo
     df_carbon_emission = pd.DataFrame(data_carbon_emission)
     return df_carbon_emission
 
-
 def hwp_carbon_emission_immed(fm):
     data_carbon_emission_immed = {'period': [], 'co2_emission_immed': []}    
     for i in range(0, fm.horizon * 10  + 1):
@@ -220,7 +213,6 @@ def emission_concrete_manu(fm, product_coefficients, credibility, clt_conversion
     df_emission_concrete_manu = pd.DataFrame(df_emission_concrete_manu)
     return df_emission_concrete_manu
 
-
 # Displacement of concrete landfill
 def emission_concrete_landfill(fm, product_coefficients, credibility, clt_conversion_rate, co2_concrete_landfill_factor, displacement_effect):
     from util import  calculate_concrete_volume
@@ -253,13 +245,10 @@ def compile_scenario(fm, case_study, obj_mode, scenario_name):
 
     csv_folder_path = os.path.join('./outputs/csv', case_study)
     if not os.path.exists(csv_folder_path):
-        os.makedirs(csv_folder_path)
-    
+        os.makedirs(csv_folder_path)    
     csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario.csv')
-    df.to_csv(csv_file_path, index=False)
-    
+    df.to_csv(csv_file_path, index=False)    
     return df
-
 
 def plot_scenario(df, case_study, obj_mode, scenario_name):
     import os
@@ -272,26 +261,19 @@ def plot_scenario(df, case_study, obj_mode, scenario_name):
     ax[1].set_title('Harvested volume (m3)')
     ax[2].bar(df.period, df.ogs)
     ax[2].set_ylim(0, None)
-    ax[2].set_title('Growing Stock (m3)')
-    
-    plt.tight_layout()
-    
+    ax[2].set_title('Growing Stock (m3)')    
+    plt.tight_layout()   
     folder_path = os.path.join('./outputs/fig', case_study)
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)   
     file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling.pdf"
-    file_path = os.path.join(folder_path, file_name)
-    
+    file_path = os.path.join(folder_path, file_name)   
     # Save and show plot
     plt.savefig(file_path)
     plt.show()
     plt.close()
-    print(f"Plot saved to {file_path}")
-
-
-    
+    print(f"Plot saved to {file_path}")    
     return fig, ax
-
 
 def plot_results(fm):
     pareas = [fm.compile_product(period, '1.') for period in fm.periods]
@@ -307,7 +289,6 @@ def plot_results(fm):
     ax[2].set_ylim(0, None)
     return fig, ax, df
 
-
 def compile_scenario_maxstock(fm, case_study, obj_mode, scenario_name):
     oha = [fm.compile_product(period, '1.', acode='harvest') for period in fm.periods]
     ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
@@ -321,18 +302,12 @@ def compile_scenario_maxstock(fm, case_study, obj_mode, scenario_name):
             'ocp':ocp,
             'ocf':ocf}
     df = pd.DataFrame(data)
-
-
     csv_folder_path = os.path.join('./outputs/csv', case_study)
     if not os.path.exists(csv_folder_path):
-        os.makedirs(csv_folder_path)
-    
+        os.makedirs(csv_folder_path)    
     csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_maxstock.csv')
-    df.to_csv(csv_file_path, index=False)
-    
+    df.to_csv(csv_file_path, index=False)   
     return df
-
-
 
 def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
     fig, ax = plt.subplots(1, 4, figsize=(20, 5))
@@ -364,13 +339,6 @@ def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
     ax[3].set_xlabel('Period')
     ax[3].set_ylabel('Stock (ton)')
 
-    # # Plot and label the fifth subplot for total carbon emission
-    # ax[4].bar(df.period, df.ocf)
-    # ax[4].set_ylim(0, None)
-    # ax[4].set_title('Total Carbon Emission')
-    # ax[4].set_xlabel('Period')
-    # ax[4].set_ylabel('tons of C')
-
     plt.tight_layout()
     
     folder_path = os.path.join('./outputs/fig', case_study)
@@ -378,16 +346,12 @@ def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
         os.makedirs(folder_path)   
     file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling_maxstock.pdf"
     file_path = os.path.join(folder_path, file_name)
-    
     # Save and show plot
     plt.savefig(file_path)
     plt.show()
     plt.close()
     print(f"Plot saved to {file_path}")
-    
     return fig, ax
-
-
 
 def compile_scenario_minemission(fm, case_study, obj_mode, scenario_name):
     oha = [fm.compile_product(period, '1.', acode='harvest') for period in fm.periods]
@@ -409,9 +373,7 @@ def compile_scenario_minemission(fm, case_study, obj_mode, scenario_name):
     
     csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_minemission.csv')
     df.to_csv(csv_file_path, index=False)
-    
     return df
-
 
 def plot_scenario_minemission(df, case_study, obj_mode, scenario_name):
     import os
@@ -458,16 +420,12 @@ def plot_scenario_minemission(df, case_study, obj_mode, scenario_name):
         os.makedirs(folder_path)   
     file_name = f"{case_study}_{obj_mode}_{scenario_name}_scheduling_minemission.pdf"
     file_path = os.path.join(folder_path, file_name)
-    
     # Save and show plot
     plt.savefig(file_path)
     plt.show()
     plt.close()
-    print(f"Plot saved to {file_path}")
-    
+    print(f"Plot saved to {file_path}") 
     return fig, ax
-
-
 
 ################################################
 # Optimization
@@ -497,16 +455,10 @@ def cmp_c_ss(fm, path, clt_percentage, hwp_pool_effect_value, expr, yname, half_
             result_hwp = 0     
         hwp_accu_wood  = hwp_accu_wood * (1-k_wood)**10 + result_hwp * util * proportion_solid_wood * (1-clt_percentage)
         hwp_accu_paper = hwp_accu_paper * (1-k_paper)**10 + result_hwp * util * (1- proportion_solid_wood) 
-        hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood 
-
-        
+        hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood       
         ecosystem = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
         result = hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
-
     return result
-
-
-
 
 def cmp_c_se(fm, path, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, expr, yname, half_life_solid_wood=30, half_life_paper=2, proportion_solid_wood=0.8, util=0.85, mask=None):
     """
@@ -556,19 +508,12 @@ def cmp_c_se(fm, path, clt_percentage, hwp_pool_effect_value, displacement_effec
         hwp_paper_emission =  (hwp_accu_paper * (1- (1-k_paper)**10) * 44/12 ) /1000.
         hwps_residue_emission = (hwps_residue_pool * 44/12) /1000.
 
-        hwp_emission_immediately =  (result_hwp  * util * 44/12 )/1000
-
-
-        
-        net_emission = 10 * fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
-        
+        hwp_emission_immediately =  (result_hwp  * util * 44/12 )/1000  
+        net_emission = 10 * fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])       
         co2_concrete_manu_accu += concrete_volume * util * co2_concrete_manu_factor / 1000.
-        co2_concrete_landfill_accu += concrete_volume * util * co2_concrete_landfill_factor / 1000.
-        
+        co2_concrete_landfill_accu += concrete_volume * util * co2_concrete_landfill_factor / 1000. 
         result += hwp_pool_effect_value * (hwp_wood_emission + hwp_paper_emission) + net_emission + hwps_residue_emission + release_immediately_value * hwp_emission_immediately - displacement_effect * (co2_concrete_manu_accu + co2_concrete_landfill_accu)
-
     return result
-
 
 def cmp_c_z(fm, path, expr):
     """
@@ -595,7 +540,6 @@ def cmp_c_cflw(fm, path, expr, mask=None): # product, all harvest actions
             result[t] = fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
     return result
 
-
 def cmp_c_caa(fm, path, expr, acodes, mask=None): # product, named actions
     """
     Compile constraint coefficient for product indicator (given ForestModel 
@@ -609,7 +553,6 @@ def cmp_c_caa(fm, path, expr, acodes, mask=None): # product, named actions
         if d['acode'] in acodes:
             result[t] = fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
     return result
-
 
 def cmp_c_ci(fm, path, yname, mask=None): # product, named actions
     """
@@ -659,7 +602,6 @@ def cmp_c_ss_c(fm, path, yname, mask=None):
 
     # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
     result_dict[fm.periods[-1]] = result
-
     return result_dict
 
 def cmp_c_z_bd(fm, path, expr):
@@ -667,16 +609,9 @@ def cmp_c_z_bd(fm, path, expr):
     Compile objective function coefficient (given ForestModel instance, 
     leaf-to-root-node path, and expression to evaluate).
     """   
-    result = fm.inventory(fm.period_length, mask = ('?', '?', '?', '?', '?', '1'))
-    # result = 0.
-    # for t, n in enumerate(path, start=1):        
-    #     d = n.data()
-    #     if fm.is_harvest(d['acode']):
-    #         # breakpoint()
-    #         # import pdb
-    #         # pdb.set_trace()
-    #         if d['dtk'][-1] == '1':
-    #             result += fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
+    result = 0.
+    for t in range(1, fm.period_length + 1):
+        result += fm.inventory(t, mask = ('?', '?', '?', '?', '?', '1'))
     return result
 
 def cmp_c_c_bd(fm, path, expr):
@@ -684,22 +619,14 @@ def cmp_c_c_bd(fm, path, expr):
     Compile constraint coefficient for biodiversity(given ForestModel instance, 
     leaf-to-root-node path, and expression to evaluate).
     """
-    result = fm.inventory(fm.period_length, mask = ('?', '?', '?', '?', '?', '1'))
-    # result = 0.
-    # for t, n in enumerate(path, start=1):        
-    #     d = n.data()
-    #     if fm.is_harvest(d['acode']):
-    #         # breakpoint()
-    #         # import pdb
-    #         # pdb.set_trace()
-    #         if d['dtk'][-1] == '1':
-    #             result += fm.compile_product(t, expr, d['acode'], [d['dtk']], d['age'], coeff=False)
+    result = 0.
+    for t in range(1, fm.period_length + 1):
+        result += fm.inventory(t, mask = ('?', '?', '?', '?', '?', '1'))
     # Initialing a dictionary where keys are periods
     result_dict = {period: 0 for period in fm.periods}
     # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
     result_dict[fm.periods[-1]] = result
     return result_dict
-
 
 def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_effect=0., release_immediately_value=0., name='base', util=0.85, harvest_acode='harvest',
                  cflw_ha={}, cflw_hv={}, 
@@ -777,9 +704,7 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
 
 def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-
     initial_gs =21980. #m3   
-
     aac =  296920. # AAC per year * 10
     cflw_ha_max_stock = {}
     cflw_hv_max_stock = {}
@@ -867,9 +792,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
 
 def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-
     initial_gs =21980. #m3   
-
     aac =  296920. # AAC per year * 10
     cflw_ha_max_bd = {}
     cflw_hv_max_bd = {}
@@ -901,7 +824,7 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
                      obj_mode='max_bd')
     # breakpoint()
     p_max_bd.solver(solver) 
-    fm.reset()
+    # fm.reset()
     p_max_bd.solve()
     primary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '1')) for period in fm.periods]
     secondary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '2')) for period in fm.periods]
@@ -999,9 +922,7 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-
     initial_gs =21980. #m3   
-
     aac =  296920. # AAC per year * 10
 
     cflw_ha = {}
@@ -1062,9 +983,7 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max}, 'ub':{10: cs_max}}
-
- 
+        cgen_cs = {'lb':{10: cs_max}, 'ub':{10: cs_max}} 
     else:
         assert False # bad scenario name
     
@@ -1082,11 +1001,9 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
                      cgen_cs = cgen_cs,
                      cgen_bd = cgen_bd,
                     obj_mode=obj_mode)
-    p.solver(solver)
-    
+    p.solver(solver) 
     fm.reset()
     p.solve()
-
     if p.status() != ws3.opt.STATUS_OPTIMAL:
         print('Model not optimal.')
         df = None   
@@ -1115,11 +1032,8 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
     print("------------------------------------------------")
     kpi_socioeconomic(fm)
     print("------------------------------------------------")
-
-
     return sch
-
-
+    
 ##############################################################
 # Implement a simple function to run CBM from ws3 export data
 ##############################################################
@@ -1294,7 +1208,6 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
     cbm_output_1, cbm_output_2 = run_cbm(df_carbon_stock, df_carbon_emission,  df_carbon_emission_immed, df_emission_concrete_manu, df_emission_concrete_landfill, sit_config, sit_tables, n_steps, release_immediately_value, plot = False)
     return cbm_output_1, cbm_output_2     
 
-
 def stock_emission_scenario_equivalent(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode):   
     decay_rates = {'plumber':math.log(2.)/35., 'ppaper':math.log(2.)/2.}
     product_coefficients = {'plumber':0.8, 'ppaper':0.2}
@@ -1322,7 +1235,6 @@ def stock_emission_scenario_equivalent(fm, clt_percentage, credibility, budget_i
                                        disturbance_type_mapping=disturbance_type_mapping)
     cbm_output_3, cbm_output_4 = run_cbm(df_carbon_stock, df_carbon_emission,  df_carbon_emission_immed, df_emission_concrete_manu, df_emission_concrete_landfill, sit_config, sit_tables, n_steps, release_immediately_value, plot = False)
     return cbm_output_3, cbm_output_4     
-
 
 def plot_scenarios(cbm_output_1, cbm_output_2, cbm_output_3, cbm_output_4, n_steps, case_study, obj_mode):
     fig_folder_path = os.path.join('./outputs/fig', case_study)
@@ -1354,8 +1266,6 @@ def plot_scenarios(cbm_output_1, cbm_output_2, cbm_output_3, cbm_output_4, n_ste
     plt.savefig(output_file_path)
     plt.show()
     
-
-
 def scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, obj_mode):
     
     fig_folder_path = os.path.join('./outputs/fig', case_study)
@@ -1384,8 +1294,6 @@ def scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, 
     print('dollar_per_ton is: ', dollar_per_ton)
     plt.savefig(output_file_path)
     return ax
-
-
 
 def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode, show_graph=False):
     import os  
@@ -1424,12 +1332,7 @@ def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode, show_graph=
         plt.show()
     plt.close()   
     print(f"Plot saved to {file_path}")
-
     return comparison_df
-
-
-
-
 
 def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shannon_10_base, case_study, obj_mode, show_graph=False):
     
@@ -1467,11 +1370,8 @@ def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shanno
     if show_graph:
         plt.show()
     plt.close()
-    
     print(f"Pie Charts for Time Periods 0 and 10 saved to {file_path}")
    
-
-
 def compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_eco_base):
     """
     Compare the socioeconomic KPIs between the alternative and baseline scenarios.
@@ -1501,14 +1401,9 @@ def compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_ec
     
     return socio_diff, eco_diff
     
-    
-
-
 def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max, pickle_output_base,  
                   pickle_output_alter):
     from util import stock_emission_scenario, plot_scenarios, scenario_dif, stock_emission_scenario_equivalent, compare_kpi_age, kpi_socioeconomic, compare_kpi_socioeconomic
-
-
     # Create a folder for pickle outputs
     pickle_folder_path = os.path.join('./outputs/pickle', case_study)
     if not os.path.exists(pickle_folder_path):
@@ -1612,11 +1507,6 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
     # compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_eco_base)
     print("---------------------------------------------------------------------------------------")
 
-
-
-
-
-
 def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
     # Add carbon pools indicators 
     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 
@@ -1681,7 +1571,6 @@ def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
     merged_df.at[0, 'Stock_Change'] = 0
 
     return merged_df
-
 
 def cbm_report_both(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
     # Add carbon pools indicators 
@@ -1754,11 +1643,6 @@ def cbm_report_both(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_grow
     merged_df.at[0, 'Stock_Change'] = 0
 
     return merged_df
-
-
-
-
-    
 
 def compare_ws3_cbm(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, plots):
     import numpy as np
@@ -1849,12 +1733,9 @@ def compare_ws3_cbm(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
-
     # Show the combined plot
     plt.show()
-
     return df_cbm, df_ws3
-
 
 def compare_ws3_cbm_both(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, ecosystem_decay_emissions_pools, GrossGrowth_pools, plots):
     import numpy as np
@@ -1972,9 +1853,6 @@ def compare_ws3_cbm_both(fm, cbm_output, disturbance_type_mapping, biomass_pools
 
     return df_cbm, df_ws3
 
-
-
-
 def compare_ws3_cbm_exactmatch(fm, cbm_output, disturbance_type_mapping, biomass_pools, dom_pools, plots):
     import numpy as np
     eco_pools = biomass_pools + dom_pools
@@ -2068,168 +1946,9 @@ def compare_ws3_cbm_exactmatch(fm, cbm_output, disturbance_type_mapping, biomass
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
-
     # Show the combined plot
     plt.show()
-
     return df_cbm, df_ws3
-
-
-def plugin_c_curves_both(fm, c_curves_p, c_curves_f):
-    # Define Sum Carbon Pools and Sum Carbon Fluxes
-    biomass_pools = ['SoftwoodMerch','SoftwoodFoliage', 'SoftwoodOther', 'SoftwoodCoarseRoots','SoftwoodFineRoots',                        
-                     'HardwoodMerch', 'HardwoodFoliage', 'HardwoodOther', 'HardwoodCoarseRoots', 'HardwoodFineRoots']
-    dom_pools = ['AboveGroundVeryFastSoil', 'BelowGroundVeryFastSoil', 'AboveGroundFastSoil', 'BelowGroundFastSoil',
-                 'MediumSoil', 'AboveGroundSlowSoil', 'BelowGroundSlowSoil', 'SoftwoodStemSnag', 'SoftwoodBranchSnag',
-                 'HardwoodStemSnag', 'HardwoodBranchSnag']
-    all_fluxes = [
-        'DisturbanceCO2Production',
-        'DisturbanceCH4Production',
-        'DisturbanceCOProduction',
-        'DisturbanceBioCO2Emission',
-        'DisturbanceBioCH4Emission',
-        'DisturbanceBioCOEmission',
-        'DecayDOMCO2Emission',
-        'DisturbanceSoftProduction',
-        'DisturbanceHardProduction',
-        'DisturbanceDOMProduction',
-        'DeltaBiomass_AG',
-        'DeltaBiomass_BG',
-        'TurnoverMerchLitterInput',
-        'TurnoverFolLitterInput',
-        'TurnoverOthLitterInput',
-        'TurnoverCoarseLitterInput',
-        'TurnoverFineLitterInput',
-        'DecayVFastAGToAir',
-        'DecayVFastBGToAir',
-        'DecayFastAGToAir',
-        'DecayFastBGToAir',
-        'DecayMediumToAir',
-        'DecaySlowAGToAir',
-        'DecaySlowBGToAir',
-        'DecaySWStemSnagToAir',
-        'DecaySWBranchSnagToAir',
-        'DecayHWStemSnagToAir',
-        'DecayHWBranchSnagToAir',
-        'DisturbanceMerchToAir',
-        'DisturbanceFolToAir',
-        'DisturbanceOthToAir',
-        'DisturbanceCoarseToAir',
-        'DisturbanceFineToAir',
-        'DisturbanceDOMCO2Emission',
-        'DisturbanceDOMCH4Emission',
-        'DisturbanceDOMCOEmission',
-        'DisturbanceMerchLitterInput',
-        'DisturbanceFolLitterInput',
-        'DisturbanceOthLitterInput',
-        'DisturbanceCoarseLitterInput',
-        'DisturbanceFineLitterInput',
-        'DisturbanceVFastAGToAir',
-        'DisturbanceVFastBGToAir',
-        'DisturbanceFastAGToAir',
-        'DisturbanceFastBGToAir',
-        'DisturbanceMediumToAir',
-        'DisturbanceSlowAGToAir',
-        'DisturbanceSlowBGToAir',
-        'DisturbanceSWStemSnagToAir',
-        'DisturbanceSWBranchSnagToAir',
-        'DisturbanceHWStemSnagToAir',
-        'DisturbanceHWBranchSnagToAir'
-    ]
-    ecosystem_decay_emissions_pools = [
-        'DecayVFastAGToAir',
-        'DecayVFastBGToAir',
-        'DecayFastAGToAir',
-        'DecayFastBGToAir',
-        'DecayMediumToAir',
-        'DecaySlowAGToAir',
-        'DecaySlowBGToAir',
-        'DecaySWStemSnagToAir',
-        'DecaySWBranchSnagToAir',
-        'DecayHWStemSnagToAir',
-        'DecayHWBranchSnagToAir']
-    GrossGrowth_pools = [
-        'DeltaBiomass_AG',
-        'TurnoverMerchLitterInput',
-        'TurnoverFolLitterInput',
-        'TurnoverOthLitterInput',
-        'DeltaBiomass_BG',
-        'TurnoverCoarseLitterInput',
-        'TurnoverFineLitterInput']
-
-    ecosystem_pools = biomass_pools + dom_pools
-    fluxes = ecosystem_decay_emissions_pools
-    gross_growth = GrossGrowth_pools
-    sum_pools = ['ecosystem', 'biomass', 'DOM']  
-    
-    pools=sum_pools
-    fluxes=['net_emission', 'total_emissions', 'gross_growth']
-      
-   
-    for dtype_key in fm.dtypes:
-        dt = fm.dt(dtype_key)
-        mask = ('?', '?', '?', '?', dtype_key[4], dtype_key[5])
-        for _mask, ytype, curves in fm.yields:
-            if _mask != mask: continue # we know there will be a match so this works
-            # print('found match for mask', mask)
-            pool_data = c_curves_p.loc[' '.join(dtype_key)]
-            for yname in pools:
-                points = list(zip(pool_data.index.values, pool_data[yname]))
-                curve = fm.register_curve(ws3.core.Curve(yname, 
-                                                         points=points, 
-                                                         type='a', 
-                                                         is_volume=False,
-                                                         xmax=fm.max_age,
-                                                         period_length=fm.period_length))
-                curves.append((yname, curve))
-                dt.add_ycomp('a', yname, curve)
-            flux_data = c_curves_f.loc[' '.join(dtype_key)]
-            for yname in fluxes:
-                points = list(zip(flux_data.index.values, flux_data[yname]))
-                curve = fm.register_curve(ws3.core.Curve(yname, 
-                                                         points=points, 
-                                                         type='a', 
-                                                         is_volume=False,
-                                                         xmax=fm.max_age,
-                                                         period_length=fm.period_length))
-                curves.append((yname, curve))
-                dt.add_ycomp('a', yname, curve)
-        #mask = '? ? %s ? %' % (dtype_key[2], dtype_key[4])
-        #points = c_curves_p
-
-
-#Without repeatition
-# def plugin_c_curves(fm, c_curves_p, pools):
-#     processed_masks = set()  # To track processed masks
-#     for dtype_key in fm.dtypes:
-#         dt = fm.dt(dtype_key)
-#         mask = ('?', '?', '?', '?', dtype_key[4], dtype_key[5])
-        
-#         if mask in processed_masks:
-#             continue  # Skip if this mask has already been processed
-        
-#         for _mask, ytype, curves in fm.yields:
-#             if _mask != mask:
-#                 continue  # Continue if no match
-            
-#             print('found match for mask', mask)
-#             pool_data = c_curves_p.loc[' '.join(dtype_key)]
-#             for yname in pools:
-#                 points = list(zip(pool_data.index.values, pool_data[yname]))
-#                 curve = fm.register_curve(ws3.core.Curve(
-#                     yname, 
-#                     points=points, 
-#                     type='a', 
-#                     is_volume=False,
-#                     xmax=fm.max_age,
-#                     period_length=fm.period_length
-#                 ))
-#                 curves.append((yname, curve))
-#                 dt.add_ycomp('a', yname, curve)
-        
-        # Add the processed mask to the set
-        # processed_masks.add(mask)
-
 
 def plugin_c_curves(fm, c_curves_p, c_curves_f):
     # Dictionary to track registered curves for each dtype_key
@@ -2442,11 +2161,6 @@ def plugin_c_curves(fm, c_curves_p, c_curves_f):
 
                     # Mark the curve as registered
                     registered_curves[dtype_key].add(yname)
-
-
-
-
-
 
 def compile_events(self, softwood_volume_yname, hardwood_volume_yname, n_yield_vals):
     
@@ -2716,9 +2430,6 @@ def track_system_emission(fm, half_life_solid_wood=30, half_life_paper=2, propor
     plt.tight_layout()
     return fig, ax, df
 
-
-
-
 ################################################
 # KPI indicatores 
 ################################################
@@ -2885,7 +2596,6 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     
     return old_growth_df
 
-
 def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=False):
     import numpy as np
     import matplotlib.pyplot as plt
@@ -3007,8 +2717,6 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
     print(f"Pie Charts for Time Periods 0 and 10 saved to {file_path}")
     return portion_10, shannon_10
 
-
-
 def kpi_socioeconomic(fm, util=0.85):
     """
     Calculate the job creation (scocial) and provincial government revenues (economic)
@@ -3029,7 +2737,6 @@ based on the total harvested volume
     print('The economic indicator (the provincial government revenues) is: ', eco_indicator)       
 
     return socio_indicator, eco_indicator
-
 
 ################################################################
 #Old Growth Inventory 
@@ -3215,7 +2922,6 @@ def create_grouped_bar_chart(data, y_label, case_study):
     ax.set_xticklabels(scenarios, rotation=45, ha="right", fontsize=10)
     ax.set_ylabel(y_label, fontsize=12)
     ax.legend(title="Objectives", fontsize=9)
-
     plt.tight_layout()
     output_dir = f'./plots/fig/{case_study}'
     os.makedirs(output_dir, exist_ok=True)
@@ -3224,5 +2930,3 @@ def create_grouped_bar_chart(data, y_label, case_study):
     plt.savefig(file_path, format='svg')
     plt.show()
     print(f"Radar chart subplots saved at: {file_path}")
-
-

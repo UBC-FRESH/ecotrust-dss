@@ -714,7 +714,6 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     cgen_cs_max_stock = {}
     cgen_bd_max_stock = {}
 
-    print('running maximizing stock scenario')
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
@@ -739,9 +738,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     fm.reset()
     p_max_stock.solve()
     ohv = [fm.compile_product(period, 'totvol * 0.85', acode='harvest') for period in fm.periods]
-    print(ohv)
     cs_max = p_max_stock.z()
-    print('maximum stock is :', cs_max)
 
     fm.reset()
     # breakpoint()
@@ -753,7 +750,6 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     cgen_cs_min_stock = {}
     cgen_bd_min_stock = {}
 
-    print('running maximizing harvesting scenario')
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
@@ -782,15 +778,204 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     lhs_values = p_min_stock.get_all_constraints_lhs_values()
     # print(lhs_values)
     cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
-    print('minimum stock is:', cs_min)
 
 
     epsilon = (cs_max - cs_min)/n
     # breakpoint()
-    print(epsilon)
     return epsilon, cs_max
 
-def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
+def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
+    import gurobipy as grb
+    initial_gs =21980. #m3   
+    aac =  296920. # AAC per year * 10
+    cflw_ha_max_stock = {}
+    cflw_hv_max_stock = {}
+    cgen_ha_max_stock = {}
+    cgen_hv_max_stock = {}
+    cgen_gs_max_stock = {}
+    cgen_cs_max_stock = {}
+    cgen_bd_max_stock = {}
+    
+    cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    
+    p_max_stock = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_stock', 
+                     cflw_ha=cflw_ha_max_stock, 
+                     cflw_hv=cflw_hv_max_stock,
+                     cgen_ha=cgen_ha_max_stock,
+                     cgen_hv=cgen_hv_max_stock,
+                     cgen_gs=cgen_gs_max_stock,
+                     cgen_cs = cgen_cs_max_stock,
+                     cgen_bd = cgen_bd_max_stock,
+                     obj_mode='max_st')
+    # breakpoint()
+    p_max_stock.solver(solver) 
+    # fm.reset()
+    p_max_stock.solve()
+    cs_max = p_max_stock.z()
+    fm.reset()
+    
+    cflw_ha_min_stock = {}
+    cflw_hv_min_stock = {}
+    cgen_ha_min_stock = {}
+    cgen_hv_min_stock = {}
+    cgen_gs_min_stock = {}
+    cgen_cs_min_stock = {}
+    cgen_bd_min_stock = {}
+
+    cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+
+    p_min_stock = gen_scenario(fm=fm, 
+                     clt_percentage=clt_percentage,
+                     hwp_pool_effect_value=hwp_pool_effect_value,
+                     displacement_effect=displacement_effect,
+                     release_immediately_value=release_immediately_value,
+                     name='max_harvest', 
+                     cflw_ha=cflw_ha_min_stock, 
+                     cflw_hv=cflw_hv_min_stock,
+                     cgen_ha=cgen_ha_min_stock,
+                     cgen_hv=cgen_hv_min_stock,
+                     cgen_gs=cgen_gs_min_stock,
+                     cgen_cs = cgen_cs_min_stock,
+                     cgen_bd = cgen_bd_min_stock,
+                     obj_mode='max_hv')
+    
+    p_min_stock.solver(solver) 
+    # fm.reset()
+    p_min_stock.solve()
+    # breakpoint()
+    lhs_values = p_min_stock.get_all_constraints_lhs_values()
+    # print(lhs_values)
+    cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    epsilon = (cs_max - cs_min)/n
+    print(cs_max)
+
+    bd_values = []
+    cs_values = []
+
+    for i in range(0, n):
+        fm.reset()
+        cflw_ha = {}
+        cflw_hv = {}
+        cgen_ha = {}
+        cgen_hv = {}
+        cgen_gs = {}
+        cgen_cs = {}
+        cgen_bd = {}
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
+        cgen_cs = {'lb':{10: 0}, 'ub':{10: cs_min + i * epsilon}}
+
+        p = gen_scenario(fm=fm, 
+                         clt_percentage=clt_percentage,
+                         hwp_pool_effect_value=hwp_pool_effect_value,
+                         displacement_effect=displacement_effect,
+                         release_immediately_value=release_immediately_value,
+                         name='max_biodiversity', 
+                         cflw_ha=cflw_ha, 
+                         cflw_hv=cflw_hv,
+                         cgen_ha=cgen_ha,
+                         cgen_hv=cgen_hv,
+                         cgen_gs=cgen_gs,
+                         cgen_cs = cgen_cs,
+                         cgen_bd = cgen_bd,
+                        obj_mode='max_bd')
+        p.solver(solver) 
+        fm.reset()
+        p.solve()
+        obj_val = p.z()
+        lhs_values = p.get_all_constraints_lhs_values()
+        cs_val = lhs_values['gen-ub_010_cgen_cs']
+        bd_values.append(obj_val)
+        cs_values.append(cs_val)
+        breakpoint()
+    print(bd_values)
+    print(cs_values)
+    # Plot Tradeoff Curve (Pareto Front)
+    plt.figure(figsize=(8, 5))
+    plt.plot(cs_values, bd_values, marker='o', linestyle='-', label="Pareto Front")
+    plt.xlabel("carbon stock")
+    plt.ylabel("biodiversity")
+    plt.title("Tradeoff Curve")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP):
+    
+    import gurobipy as grb
+    initial_gs =21980. #m3   
+    aac =  296920. # AAC per year * 10
+    hv_values = []
+    cs_values = []
+
+    for i in range(0, n+1):
+        fm.reset()
+        cflw_ha = {}
+        cflw_hv = {}
+        cgen_ha = {}
+        cgen_hv = {}
+        cgen_gs = {}
+        cgen_cs = {}
+        cgen_bd = {}
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
+        cgen_cs = {'lb':{10: cs_max-i*epsilon}, 'ub':{10: cs_max}}
+
+        p = gen_scenario(fm=fm, 
+                         clt_percentage=clt_percentage,
+                         hwp_pool_effect_value=hwp_pool_effect_value,
+                         displacement_effect=displacement_effect,
+                         release_immediately_value=release_immediately_value,
+                         name='max_harvest', 
+                         cflw_ha=cflw_ha, 
+                         cflw_hv=cflw_hv,
+                         cgen_ha=cgen_ha,
+                         cgen_hv=cgen_hv,
+                         cgen_gs=cgen_gs,
+                         cgen_cs = cgen_cs,
+                         cgen_bd = cgen_bd,
+                        obj_mode='max_hv')
+        p.solver(solver) 
+        fm.reset()
+        p.solve()
+        obj_val = p.z()
+        lhs_values = p.get_all_constraints_lhs_values()
+        cs_val = lhs_values['gen-ub_010_cgen_cs']
+        hv_values.append(obj_val)
+        cs_values.append(cs_val)
+        breakpoint()
+    print(hv_values)
+    print(cs_values)
+    # Plot Tradeoff Curve (Pareto Front)
+    plt.figure(figsize=(8, 5))
+    plt.plot(cs_values, hv_values, marker='o', linestyle='-', label="Pareto Front")
+    plt.xlabel("carbon stock")
+    plt.ylabel("harvested volume")
+    plt.title("Tradeoff Curve")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+
+def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
     initial_gs =21980. #m3   
     aac =  296920. # AAC per year * 10
@@ -801,13 +986,12 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
     cgen_gs_max_bd = {}
     cgen_cs_max_bd = {}
     cgen_bd_max_bd = {}
-
-    print('running maximizing biodiversity scenario')
+    
     cflw_ha_max_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_bd = ({p:0.05 for p in fm.periods}, 1)
     cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-
+    
     p_max_bd = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
                      hwp_pool_effect_value=hwp_pool_effect_value,
@@ -826,99 +1010,99 @@ def epsilon_computer_bd(fm, clt_percentage, hwp_pool_effect_value, displacement_
     p_max_bd.solver(solver) 
     # fm.reset()
     p_max_bd.solve()
-    primary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '1')) for period in fm.periods]
-    secondary_forest = [fm.inventory(period, mask = ('?', '?', '?', '?', '?', '2')) for period in fm.periods]
-    print(primary_forest)
-    print(secondary_forest)
     bd_max = p_max_bd.z()
-    print('maximum biodiversity is :', bd_max)
-
     fm.reset()
-    # breakpoint()
-    cflw_ha_min_bd_1 = {}
-    cflw_hv_min_bd_1 = {}
-    cgen_ha_min_bd_1 = {}
-    cgen_hv_min_bd_1 = {}
-    cgen_gs_min_bd_1 = {}
-    cgen_cs_min_bd_1 = {}
-    cgen_bd_min_bd_1 = {}
+    
+    cflw_ha_min_bd = {}
+    cflw_hv_min_bd = {}
+    cgen_ha_min_bd = {}
+    cgen_hv_min_bd = {}
+    cgen_gs_min_bd = {}
+    cgen_cs_min_bd = {}
+    cgen_bd_min_bd = {}
 
-    print('running maximizing carbon stock scenario')
-    cflw_ha_min_bd_1 = ({p:0.05 for p in fm.periods}, 1)
-    cflw_hv_min_bd_1 = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_bd_1 = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_min_bd_1 = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-    cgen_bd_min_bd_1 = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+    cflw_ha_min_bd = ({p:0.05 for p in fm.periods}, 1)
+    cflw_hv_min_bd = ({p:0.05 for p in fm.periods}, 1)
+    cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    cgen_gs_min_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_bd_min_bd = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
-    p_min_bd_1 = gen_scenario(fm=fm, 
+    p_min_bd = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
                      hwp_pool_effect_value=hwp_pool_effect_value,
                      displacement_effect=displacement_effect,
                      release_immediately_value=release_immediately_value,
                      name='max_harvest', 
-                     cflw_ha=cflw_ha_min_bd_1, 
-                     cflw_hv=cflw_hv_min_bd_1,
-                     cgen_ha=cgen_ha_min_bd_1,
-                     cgen_hv=cgen_hv_min_bd_1,
-                     cgen_gs=cgen_gs_min_bd_1,
-                     cgen_cs = cgen_cs_min_bd_1,
-                     cgen_bd = cgen_bd_min_bd_1,
+                     cflw_ha=cflw_ha_min_bd, 
+                     cflw_hv=cflw_hv_min_bd,
+                     cgen_ha=cgen_ha_min_bd,
+                     cgen_hv=cgen_hv_min_bd,
+                     cgen_gs=cgen_gs_min_bd,
+                     cgen_cs = cgen_cs_min_bd,
+                     cgen_bd = cgen_bd_min_bd,
                      obj_mode='max_hv')
     
-    p_min_bd_1.solver(solver) 
-    fm.reset()
-    p_min_bd_1.solve()
+    p_min_bd.solver(solver) 
+    # fm.reset()
+    p_min_bd.solve()
     # breakpoint()
-    lhs_values = p_min_bd_1.get_all_constraints_lhs_values()
+    lhs_values = p_min_bd.get_all_constraints_lhs_values()
     # print(lhs_values)
-    bd_min_1 = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
-    print('minimum biodiversity_1 is:', bd_min_1)
+    bd_min = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
+    epsilon = (bd_max - bd_min)/n
 
-    fm.reset()
-    # breakpoint()
-    cflw_ha_min_bd_2 = {}
-    cflw_hv_min_bd_2 = {}
-    cgen_ha_min_bd_2 = {}
-    cgen_hv_min_bd_2 = {}
-    cgen_gs_min_bd_2 = {}
-    cgen_cs_min_bd_2 = {}
-    cgen_bd_min_bd_2 = {}
+    hv_values = []
+    bd_values = []
 
-    print('running maximizing carbon stock scenario')
-    cflw_ha_min_bd_2 = ({p:0.05 for p in fm.periods}, 1)
-    cflw_hv_min_bd_2 = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_bd_2 = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_min_bd_2 = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-    cgen_bd_min_bd_2 = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+    for i in range(0, n):
+        fm.reset()
+        cflw_ha = {}
+        cflw_hv = {}
+        cgen_ha = {}
+        cgen_hv = {}
+        cgen_gs = {}
+        cgen_cs = {}
+        cgen_bd = {}
+        cflw_ha = ({p:0.05 for p in fm.periods}, 1)
+        cflw_hv = ({p:0.05 for p in fm.periods}, 1)
+        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
+        cgen_bd = {'lb':{10:  bd_max - i * epsilon}, 'ub':{10: bd_max}}
 
-    p_min_bd_2 = gen_scenario(fm=fm, 
-                     clt_percentage=clt_percentage,
-                     hwp_pool_effect_value=hwp_pool_effect_value,
-                     displacement_effect=displacement_effect,
-                     release_immediately_value=release_immediately_value,
-                     name='max_carbon_stock', 
-                     cflw_ha=cflw_ha_min_bd_2, 
-                     cflw_hv=cflw_hv_min_bd_2,
-                     cgen_ha=cgen_ha_min_bd_2,
-                     cgen_hv=cgen_hv_min_bd_2,
-                     cgen_gs=cgen_gs_min_bd_2,
-                     cgen_cs = cgen_cs_min_bd_2,
-                     cgen_bd = cgen_bd_min_bd_2,
-                     obj_mode='max_st')
-    
-    p_min_bd_2.solver(solver) 
-    fm.reset()
-    p_min_bd_2.solve()
-    # breakpoint()
-    lhs_values = p_min_bd_2.get_all_constraints_lhs_values()
-    # print(lhs_values)
-    bd_min_2 = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
-    print('minimum biodiversity_2 is:', bd_min_2)
-    # bd_min = min(bd_min_1, bd_min_2)    
-    epsilon = (bd_max - bd_min_1)/n
-    # breakpoint()
-    # print(epsilon)
-    return epsilon, bd_max
+        p = gen_scenario(fm=fm, 
+                         clt_percentage=clt_percentage,
+                         hwp_pool_effect_value=hwp_pool_effect_value,
+                         displacement_effect=displacement_effect,
+                         release_immediately_value=release_immediately_value,
+                         name='max_harvest', 
+                         cflw_ha=cflw_ha, 
+                         cflw_hv=cflw_hv,
+                         cgen_ha=cgen_ha,
+                         cgen_hv=cgen_hv,
+                         cgen_gs=cgen_gs,
+                         cgen_cs = cgen_cs,
+                         cgen_bd = cgen_bd,
+                        obj_mode='max_hv')
+        p.solver(solver) 
+        fm.reset()
+        p.solve()
+        obj_val = p.z()
+        lhs_values = p.get_all_constraints_lhs_values()
+        bd_val = lhs_values['gen-ub_010_cgen_bd']
+        hv_values.append(obj_val)
+        bd_values.append(bd_val)
+        breakpoint()
+
+    # Plot Tradeoff Curve (Pareto Front)
+    plt.figure(figsize=(8, 5))
+    plt.plot(bd_values, hv_values, marker='o', linestyle='-', label="Pareto Front")
+    plt.xlabel("biodiversity")
+    plt.ylabel("harvested volume")
+    plt.title("Tradeoff Curve")
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb

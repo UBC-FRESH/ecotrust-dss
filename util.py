@@ -707,7 +707,8 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
 
 def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-    initial_gs =21980. #m3   
+    # initial_gs =21980. #m3
+    initial_gs = fm.inventory(0, 'totvol')
     aac =  296920. # AAC per year * 10
     cflw_ha_max_stock = {}
     cflw_hv_max_stock = {}
@@ -789,7 +790,8 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
 
 def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-    initial_gs =21980. #m3   
+    # initial_gs =21980. #m3
+    initial_gs = fm.inventory(0, 'totvol')
     aac =  296920. # AAC per year * 10
     cflw_ha_max_stock = {}
     cflw_hv_max_stock = {}
@@ -921,7 +923,8 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
 def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP):
     
     import gurobipy as grb
-    initial_gs =21980. #m3   
+    # initial_gs =21980. #m3  
+    initial_gs = fm.inventory(0, 'totvol')
     aac =  296920. # AAC per year * 10
     hv_values = []
     cs_values = []
@@ -980,7 +983,8 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
 
 def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-    initial_gs =21980. #m3   
+    # initial_gs =21980. #m3 
+    initial_gs = fm.inventory(0, 'totvol')
     aac =  296920. # AAC per year * 10
     cflw_ha_max_bd = {}
     cflw_hv_max_bd = {}
@@ -1109,7 +1113,8 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
     import gurobipy as grb
-    initial_gs =21980. #m3   
+    # initial_gs =21980. #m3
+    initial_gs = fm.inventory(0, 'totvol')
     aac =  296920. # AAC per year * 10
 
     cflw_ha = {}

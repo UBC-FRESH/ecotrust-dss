@@ -567,35 +567,38 @@ def cmp_c_ci(fm, path, yname, mask=None): # product, named actions
         #result[t] = fm.inventory(t, yname=yname, age=d['age'], dtype_keys=[d['dtk']]) 
     return result
 
-def cmp_c_ss_c(fm, path, yname, mask=None):
+def cmp_c_ss_c(fm, path, clt_percentage, hwp_pool_effect_value, expr, yname, half_life_solid_wood=30, half_life_paper=2, half_life_clt= float('inf'), proportion_solid_wood=0.8, util=0.85, mask=None):
     """
     Compile constraint coefficient for total system carbon stock indicators (given ForestModel instance, 
     leaf-to-root-node path, and expression to evaluate).
     """
-    # k_wood = math.log(2) / half_life_solid_wood  # Decay rate for solid wood products (30-year half-life)
-    # k_paper = math.log(2) / half_life_paper  # Decay rate for paper (2-year half-life)
-    # k_clt = math.log(2) / half_life_clt  # Decay rate for clt (INF half-life)
-    # wood_density = 460 #kg/m3
-    # carbon_content = 0.5
+    k_wood = math.log(2) / half_life_solid_wood  # Decay rate for solid wood products (30-year half-life)
+    k_paper = math.log(2) / half_life_paper  # Decay rate for paper (2-year half-life)
+    k_clt = math.log(2) / half_life_clt  # Decay rate for clt (INF half-life)
+    wood_density = 460 #kg/m3
+    carbon_content = 0.5
     result = 0.
-    # sum = 0.
-    # hwp_accu_wood = 0.
-    # hwp_accu_paper = 0.
-    # hwp_accu_clt = 0.
+    sum = 0.
+    hwp_accu_wood = 0.
+    hwp_accu_paper = 0.
+    hwp_accu_clt = 0.
     ecosystem = 0.
+    # ecosystem = 0.
+    # result = 0.
     for t, n in enumerate(path, start=1):        
         d = n.data()    
-        # if fm.is_harvest(d['acode']):
-        #     result_hwp = fm.compile_product(t, 'totvol', d['acode'], [d['dtk']], d['age'], coeff=False) * wood_density * carbon_content/1000
-        # else:
-        #     result_hwp = 0     
-        # hwp_accu_wood  = hwp_accu_wood * (1-k_wood)**10 + result_hwp * util * proportion_solid_wood * (1-clt_percentage)
-        # hwp_accu_paper = hwp_accu_paper * (1-k_paper)**10 + result_hwp * util * (1- proportion_solid_wood) 
-        # hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood 
-
+        if fm.is_harvest(d['acode']):
+            result_hwp = fm.compile_product(t, 'totvol', d['acode'], [d['dtk']], d['age'], coeff=False) * wood_density * carbon_content/1000
+        else:
+            result_hwp = 0     
+        hwp_accu_wood  = hwp_accu_wood * (1-k_wood)**10 + result_hwp * util * proportion_solid_wood * (1-clt_percentage)
+        hwp_accu_paper = hwp_accu_paper * (1-k_paper)**10 + result_hwp * util * (1- proportion_solid_wood) 
+        hwp_accu_clt = hwp_accu_clt * (1-k_clt)**10 + result_hwp * util * clt_percentage * proportion_solid_wood 
         
         ecosystem = fm.inventory(t, yname, age=d['_age'], dtype_keys=[d['_dtk']])
-        result = ecosystem
+        result = hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
+        # result = ecosystem
+        # result = hwp_pool_effect_value * (hwp_accu_wood + hwp_accu_paper + hwp_accu_clt) + ecosystem
 
     # Initialing a dictionary where keys are periods
     result_dict = {period: 0 for period in fm.periods}
@@ -692,7 +695,7 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
         cgen_data[cname] = cgen_gs
     if cgen_cs:
         cname = 'cgen_cs' # define general constraint (total carbon stock)
-        coeff_funcs[cname] = partial(cmp_c_ss_c, yname=cp_name, mask=None)
+        coeff_funcs[cname] = partial(cmp_c_ss_c, clt_percentage=clt_percentage, hwp_pool_effect_value=hwp_pool_effect_value, expr=zexpr, yname=cp_name, mask=None)
         cgen_data [cname] = cgen_cs
     if cgen_bd:
         cname = 'cgen_bd' # define general constraint (total carbon stock)

@@ -720,7 +720,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
 
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
 
     p_max_stock = gen_scenario(fm=fm, 
@@ -756,7 +756,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
 
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
@@ -803,7 +803,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
     
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     
     p_max_stock = gen_scenario(fm=fm, 
@@ -837,7 +837,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
 
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
@@ -880,7 +880,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
         cgen_bd = {}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
         cgen_cs = {'lb':{10: 0}, 'ub':{10: cs_min + i * epsilon}}
@@ -940,7 +940,7 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
         cgen_bd = {}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
         cgen_cs = {'lb':{10: cs_max-i*epsilon}, 'ub':{10: cs_max}}
@@ -996,7 +996,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
     
     cflw_ha_max_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_bd = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     
     p_max_bd = gen_scenario(fm=fm, 
@@ -1030,7 +1030,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
 
     cflw_ha_min_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_bd = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_min_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     cgen_bd_min_bd = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
@@ -1072,7 +1072,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         cgen_bd = {}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
         cgen_bd = {'lb':{10:  bd_max - i * epsilon}, 'ub':{10: bd_max}}
@@ -1138,42 +1138,42 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         print('running lowest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-10*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == 'business as usual':
         print('running business as usual scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max - 8 * epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == '40% of highest carbon stock':
         print('running 40% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-6*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == '60% of highest carbon stock':
         print('running 60% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-4*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == '20% of highest carbon stock':
         print('running 20% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-2*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == 'highest carbon stock':
         print('running highest carbon scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max}, 'ub':{10: cs_max}} 
     else:
@@ -1221,9 +1221,9 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode) 
     forest_type = forest_type_indicator(fm, case_study, obj_mode, scenario_name)    
-    print("------------------------------------------------")
-    kpi_socioeconomic(fm)
-    print("------------------------------------------------")
+    # print("------------------------------------------------")
+    # kpi_socioeconomic(fm)
+    # print("------------------------------------------------")
     return sch
     
 ##############################################################
@@ -1531,12 +1531,24 @@ def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shanno
     import matplotlib.pyplot as plt
     import os
 
+    # colors = {
+    #     'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 'Alder': '#00FF00',
+    #     'DougFir': '#00FFFF', 'Hem': '#1E90FF', 'Pine': '#9400D3', 'Spruce': '#FF00FF', 
+    #     'Birch': '#800080'
+    # }
     colors = {
-        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 'Alder': '#00FF00',
-        'DougFir': '#00FFFF', 'Hem': '#1E90FF', 'Pine': '#9400D3', 'Spruce': '#FF00FF', 
-        'Birch': '#800080'
+        'Aspen': '#FF0000',
+        'Bal': '#FF8C00',
+        'Cedar': '#FFD700',
+        'Alder': '#00FF00',
+        'DougFir': '#00FFFF',
+        'Hem': '#1E90FF',
+        'Pine': '#9400D3',
+        'Spruce': '#FF00FF',
+        'Birch': '#800080',
+        'Larch': '#000080',
+        'Others': '#EE82EE'
     }
-
     fig, axes = plt.subplots(1, 2, figsize=(10, 6))
     plt.subplots_adjust(wspace=0.6)
 
@@ -2630,7 +2642,7 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     import matplotlib.pyplot as plt
     import os
     import pandas as pd
-    
+
     canfi_map_inverse = {
         '1211': 'AC', 
         '1201': 'AT', 
@@ -2647,18 +2659,57 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
         '1200': 'SPP',
         '206': 'ALB',
         '1308': 'PAP',
-        '702': 'PLI'
+        '702': 'PLI',
+        '1205': 'DEL',
+        '600': 'LARI',
+        '208': 'PON' ,
+        '603': 'LARI' ,
+        '1802': 'DR',
+        '604': 'LARI',
+        '201': 'MON',
+        '1150': 'UNKN' 
     }
     
-    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP']
+    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP', 'DEL']
     Bal = ['B', 'BA', 'BG', 'BL']
-    Cedar = ['CW', 'YC', 'PLI']
+    Cedar = ['CW', 'YC']
     Alder = ['D', 'DR']
     DougFir = ['F', 'FD', 'FDC', 'FDI']
     Hem = ['H', 'HM', 'HW']
-    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB']
+    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB', 'PON', 'MON']
     Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB']
     Birch = ['PAP']
+    Larch = ['LARI']
+    Others = ['UNKN']
+    
+    # canfi_map_inverse = {
+    #     '1211': 'AC', 
+    #     '1201': 'AT', 
+    #     '304': 'BL', 
+    #     '1303': 'EP', 
+    #     '500': 'FDI', 
+    #     '402': 'HW',
+    #     '403': 'HM',
+    #     '204': 'PLI', 
+    #     '101': 'SB', 
+    #     '104': 'SE', 
+    #     '105': 'SW', 
+    #     '100': 'SX',
+    #     '1200': 'SPP',
+    #     '206': 'ALB',
+    #     '1308': 'PAP',
+    #     '702': 'PLI'
+    # }
+    
+    # Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP']
+    # Bal = ['B', 'BA', 'BG', 'BL']
+    # Cedar = ['CW', 'YC', 'PLI']
+    # Alder = ['D', 'DR']
+    # DougFir = ['F', 'FD', 'FDC', 'FDI']
+    # Hem = ['H', 'HM', 'HW']
+    # Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB']
+    # Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB']
+    # Birch = ['PAP']
     
     def find_corresponding_species(number):
         values = canfi_map_inverse.get(str(number))
@@ -2685,6 +2736,10 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
                 return 'Spruce'
             elif value in Birch:
                 return 'Birch'
+            elif value in Larch:
+                return 'Larch'
+            elif value in Others:
+                return 'Others'
         
         return "No matching set found."
     
@@ -2700,8 +2755,21 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
         'Hem': '#1E90FF',
         'Pine': '#9400D3',
         'Spruce': '#FF00FF',
-        'Birch': '#800080'
-    }  
+        'Birch': '#800080',
+        'Larch': '#000080',
+        'Others': '#EE82EE'
+    }
+    # colors = {
+    #     'Aspen': '#FF0000',
+    #     'Bal': '#FF8C00',
+    #     'Cedar': '#FFD700',
+    #     'Alder': '#00FF00',
+    #     'DougFir': '#00FFFF',
+    #     'Hem': '#1E90FF',
+    #     'Pine': '#9400D3',
+    #     'Spruce': '#FF00FF',
+    #     'Birch': '#800080'
+    # }  
     
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     
@@ -2794,26 +2862,29 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
     import os
     import math
 
-
     # Species codes mapping and color dictionary
     canfi_map_inverse = {
         '1211': 'AC', '1201': 'AT', '304': 'BL', '1303': 'EP', '500': 'FDI',
         '402': 'HW', '403': 'HM', '204': 'PL', '204': 'PLI', '101': 'SB', 
         '104': 'SE', '105': 'SW', '100': 'SX', '1201': 'AT+SX', '100': 'SX+AT',
-        '1200': 'SPP', '206': 'ALB', '1308': 'PAP', '702': 'PLI'
+        '1200': 'SPP', '206': 'ALB', '1308': 'PAP', '702': 'PLI', '1205': 'DEL',
+        '600': 'LARI', '208': 'PON', '603': 'LARI', '1802': 'DR', '604': 'LARI',
+        '201': 'MON', '1150': 'UNKN'
     }
     
     # Species groups
     species_groups = {
-        'Aspen': ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP'],
+        'Aspen': ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP', 'DEL'],
         'Bal': ['B', 'BA', 'BG', 'BL'],
-        'Cedar': ['CW', 'YC', 'PLI'],
+        'Cedar': ['CW', 'YC'],
         'Alder': ['D', 'DR'],
         'DougFir': ['F', 'FD', 'FDC', 'FDI'],
         'Hem': ['H', 'HM', 'HW'],
-        'Pine': ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB'],
+        'Pine': ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB', 'PON', 'MON'],
         'Spruce': ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT'],
-        'Birch': ['PAP']
+        'Birch': ['PAP'],
+        'Larch': ['LARI'],
+        'Others': ['UNKN']
     }
 
     
@@ -2821,8 +2892,40 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
     colors = {
         'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
         'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
-        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080'
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
+        'Larch': '#000080','Others': '#EE82EE'
     }
+
+
+
+    # # Species codes mapping and color dictionary
+    # canfi_map_inverse = {
+    #     '1211': 'AC', '1201': 'AT', '304': 'BL', '1303': 'EP', '500': 'FDI',
+    #     '402': 'HW', '403': 'HM', '204': 'PL', '204': 'PLI', '101': 'SB', 
+    #     '104': 'SE', '105': 'SW', '100': 'SX', '1201': 'AT+SX', '100': 'SX+AT',
+    #     '1200': 'SPP', '206': 'ALB', '1308': 'PAP', '702': 'PLI'
+    # }
+    
+    # # Species groups
+    # species_groups = {
+    #     'Aspen': ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP'],
+    #     'Bal': ['B', 'BA', 'BG', 'BL'],
+    #     'Cedar': ['CW', 'YC', 'PLI'],
+    #     'Alder': ['D', 'DR'],
+    #     'DougFir': ['F', 'FD', 'FDC', 'FDI'],
+    #     'Hem': ['H', 'HM', 'HW'],
+    #     'Pine': ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB'],
+    #     'Spruce': ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT'],
+    #     'Birch': ['PAP']
+    # }
+
+    
+    # # Colors for each species group
+    # colors = {
+    #     'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
+    #     'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
+    #     'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080'
+    # }
 
     # Helper function to determine species group based on species code
     def find_corresponding_species(number):

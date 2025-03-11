@@ -907,7 +907,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
         cs_val = lhs_values['gen-ub_010_cgen_cs']
         bd_values.append(obj_val)
         cs_values.append(cs_val)
-        breakpoint()
+        # breakpoint()
     print(bd_values)
     print(cs_values)
     # Plot Tradeoff Curve (Pareto Front)
@@ -967,7 +967,7 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
         cs_val = lhs_values['gen-ub_010_cgen_cs']
         hv_values.append(obj_val)
         cs_values.append(cs_val)
-        breakpoint()
+        # breakpoint()
     print(hv_values)
     print(cs_values)
     # Plot Tradeoff Curve (Pareto Front)
@@ -1099,7 +1099,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         bd_val = lhs_values['gen-ub_010_cgen_bd']
         hv_values.append(obj_val)
         bd_values.append(bd_val)
-        breakpoint()
+        # breakpoint()
 
     # Plot Tradeoff Curve (Pareto Front)
     plt.figure(figsize=(8, 5))
@@ -1537,17 +1537,12 @@ def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shanno
     #     'Birch': '#800080'
     # }
     colors = {
-        'Aspen': '#FF0000',
-        'Bal': '#FF8C00',
-        'Cedar': '#FFD700',
-        'Alder': '#00FF00',
-        'DougFir': '#00FFFF',
-        'Hem': '#1E90FF',
-        'Pine': '#9400D3',
-        'Spruce': '#FF00FF',
-        'Birch': '#800080',
-        'Larch': '#000080',
-        'Others': '#EE82EE'
+        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
+        'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
+        'Larch': '#000080', 'Maple': '#8B0000', 'Oak': '#FFA500', 
+        'Elm': '#32CD32', 'Chery': '#008080', 'Cypress': '#4682B4', 
+        'Ash': '#A52A2A', 'Hardwoods': '#5F9EA0', 'Others': '#EE82EE'
     }
     fig, axes = plt.subplots(1, 2, figsize=(10, 6))
     plt.subplots_adjust(wspace=0.6)
@@ -2644,30 +2639,17 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     import pandas as pd
 
     canfi_map_inverse = {
-        '1211': 'AC', 
-        '1201': 'AT', 
-        '304': 'BL', 
-        '1303': 'EP', 
-        '500': 'FDI', 
-        '402': 'HW',
-        '403': 'HM',
-        '204': 'PLI', 
-        '101': 'SB', 
-        '104': 'SE', 
-        '105': 'SW', 
-        '100': 'SX',
-        '1200': 'SPP',
-        '206': 'ALB',
-        '1308': 'PAP',
-        '702': 'PLI',
-        '1205': 'DEL',
-        '600': 'LARI',
-        '208': 'PON' ,
-        '603': 'LARI' ,
-        '1802': 'DR',
-        '604': 'LARI',
-        '201': 'MON',
-        '1150': 'UNKN' 
+        '1211': 'AC', '1201': 'AT', '300': 'BL', '301': 'BL', '302': 'BL', '303': 'BL', '304': 'BL', '305': 'BL', '1303': 'EP', '500': 'FDI',
+        '400': 'HW', '401': 'HW', '402': 'HW', '403': 'HM', '202': 'PL', '203': 'PL', '204': 'PL', '204': 'PLI', '205': 'PL', '101': 'SB', 
+        '102': 'SB', '103':'SB', '104': 'SE', '105': 'SW', '106': 'SB' ,'100': 'SX', '1201': 'AT+SX', '1203': 'AT+SX', '1206': 'AT+SX', 
+        '100': 'SX+AT','1200': 'SPP', '206': 'ALB', '1308': 'PAP', '701': 'CW', '702': 'CW', '1205': 'DEL', '600': 'LARI', '601': 'LARI', 
+        '602': 'LARI', '605': 'LARI', '208': 'PON', '209': 'PON', '211': 'PON', '216': 'PON', '603': 'LARI', '1802': 'DR', '604': 'LARI',
+        '201': 'MON', '1150': 'UNKN', '1001': 'YCP', '1100': 'UNKN', '1301': 'PAP', '1304': 'PAP', '1305': 'PAP', '1400': 'MP', '1401': 'MP', 
+        '1403': 'MP', '1404': 'MP', '1405': 'MP', '1406': 'MP', '1410': 'MP', '1411': 'MP', '1500': 'UNKN', '1550': 'UNKN', '1601': 'UNKN', 
+        '1701': 'UNKN', '1800': 'D', '1900': 'UNKN', '2000': 'UNKN', '2100': 'OK', '2101': 'OK', '2102': 'OK', '2104': 'OK', '2108': 'OK', 
+        '2200': 'el', '2201': 'el', '2202': 'el', '2203': 'el', '2801': 'BC', '2802': 'BC', '2804': 'BC', '3000': 'UNKN', '3400': 'SH', 
+        '3401': 'SH', '3402': 'SH', '3403': 'SH', '3405': 'SH', '3500': 'UNKN', '3900': 'UNKN', '3920': 'UNKN', '3940': 'UNKN', '3960': 'SH', 
+        '4000': 'DW', '4500': 'DW', '5000': 'DW', '5500': 'DW'
     }
     
     Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP', 'DEL']
@@ -2680,6 +2662,13 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB']
     Birch = ['PAP']
     Larch = ['LARI']
+    Maple = ['MP']
+    Oak = ['OK']
+    Elm = ['el']
+    Chery = ['BC']
+    Cypress = ['YCP']
+    Ash = ['SH']
+    Hardwoods = ['DW']
     Others = ['UNKN']
     
     # canfi_map_inverse = {
@@ -2738,6 +2727,20 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
                 return 'Birch'
             elif value in Larch:
                 return 'Larch'
+            elif value in Maple:
+                return 'Maple'
+            elif value in Oak:
+                return 'Oak'
+            elif value in Elm:
+                return 'Elm'
+            elif value in Chery:
+                return 'Chery'
+            elif value in Cypress:
+                return 'Cypress'
+            elif value in Ash:
+                return 'Ash'
+            elif value in Hardwoods:
+                return 'Hardwoods'
             elif value in Others:
                 return 'Others'
         
@@ -2747,17 +2750,12 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     
     bin_edges = np.arange(0, 480, 20)
     colors = {
-        'Aspen': '#FF0000',
-        'Bal': '#FF8C00',
-        'Cedar': '#FFD700',
-        'Alder': '#00FF00',
-        'DougFir': '#00FFFF',
-        'Hem': '#1E90FF',
-        'Pine': '#9400D3',
-        'Spruce': '#FF00FF',
-        'Birch': '#800080',
-        'Larch': '#000080',
-        'Others': '#EE82EE'
+        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
+        'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
+        'Larch': '#000080', 'Maple': '#8B0000', 'Oak': '#FFA500', 
+        'Elm': '#32CD32', 'Chery': '#008080', 'Cypress': '#4682B4', 
+        'Ash': '#A52A2A', 'Hardwoods': '#5F9EA0', 'Others': '#EE82EE'
     }
     # colors = {
     #     'Aspen': '#FF0000',
@@ -2864,12 +2862,17 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
 
     # Species codes mapping and color dictionary
     canfi_map_inverse = {
-        '1211': 'AC', '1201': 'AT', '304': 'BL', '1303': 'EP', '500': 'FDI',
-        '402': 'HW', '403': 'HM', '204': 'PL', '204': 'PLI', '101': 'SB', 
-        '104': 'SE', '105': 'SW', '100': 'SX', '1201': 'AT+SX', '100': 'SX+AT',
-        '1200': 'SPP', '206': 'ALB', '1308': 'PAP', '702': 'PLI', '1205': 'DEL',
-        '600': 'LARI', '208': 'PON', '603': 'LARI', '1802': 'DR', '604': 'LARI',
-        '201': 'MON', '1150': 'UNKN'
+        '1211': 'AC', '1201': 'AT', '300': 'BL', '301': 'BL', '302': 'BL', '303': 'BL', '304': 'BL', '305': 'BL', '1303': 'EP', '500': 'FDI',
+        '400': 'HW', '401': 'HW', '402': 'HW', '403': 'HM', '202': 'PL', '203': 'PL', '204': 'PL', '204': 'PLI', '205': 'PL', '101': 'SB', 
+        '102': 'SB', '103':'SB', '104': 'SE', '105': 'SW', '106': 'SB' ,'100': 'SX', '1201': 'AT+SX', '1203': 'AT+SX', '1206': 'AT+SX', 
+        '100': 'SX+AT','1200': 'SPP', '206': 'ALB', '1308': 'PAP', '701': 'CW', '702': 'CW', '1205': 'DEL', '600': 'LARI', '601': 'LARI', 
+        '602': 'LARI', '605': 'LARI', '208': 'PON', '209': 'PON', '211': 'PON', '216': 'PON', '603': 'LARI', '1802': 'DR', '604': 'LARI',
+        '201': 'MON', '1150': 'UNKN', '1001': 'YCP', '1100': 'UNKN', '1301': 'PAP', '1304': 'PAP', '1305': 'PAP', '1400': 'MP', '1401': 'MP', 
+        '1403': 'MP', '1404': 'MP', '1405': 'MP', '1406': 'MP', '1410': 'MP', '1411': 'MP', '1500': 'UNKN', '1550': 'UNKN', '1601': 'UNKN', 
+        '1701': 'UNKN', '1800': 'D', '1900': 'UNKN', '2000': 'UNKN', '2100': 'OK', '2101': 'OK', '2102': 'OK', '2104': 'OK', '2108': 'OK', 
+        '2200': 'el', '2201': 'el', '2202': 'el', '2203': 'el', '2801': 'BC', '2802': 'BC', '2804': 'BC', '3000': 'UNKN', '3400': 'SH', 
+        '3401': 'SH', '3402': 'SH', '3403': 'SH', '3405': 'SH', '3500': 'UNKN', '3900': 'UNKN', '3920': 'UNKN', '3940': 'UNKN', '3960': 'SH', 
+        '4000': 'DW', '4500': 'DW', '5000': 'DW', '5500': 'DW'
     }
     
     # Species groups
@@ -2884,6 +2887,13 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
         'Spruce': ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT'],
         'Birch': ['PAP'],
         'Larch': ['LARI'],
+        'Maple': ['MP'],
+        'Oak': ['OK'],
+        'Elm': ['el'],
+        'Chery': ['BC'],
+        'Cypress': ['YCP'],
+        'Ash': ['SH'],
+        'Hardwoods': ['DW'],
         'Others': ['UNKN']
     }
 
@@ -2893,7 +2903,9 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
         'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
         'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
         'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
-        'Larch': '#000080','Others': '#EE82EE'
+        'Larch': '#000080', 'Maple': '#8B0000', 'Oak': '#FFA500', 
+        'Elm': '#32CD32', 'Chery': '#008080', 'Cypress': '#4682B4', 
+        'Ash': '#A52A2A', 'Hardwoods': '#5F9EA0', 'Others': '#EE82EE'
     }
 
 

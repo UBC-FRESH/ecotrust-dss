@@ -11,6 +11,396 @@ import pickle
 import numpy as np
 from math import pi
 
+def inventory_processing(stands_org, canf):
+    stands_org['forest_type'] = stands_org.apply(
+        lambda row: 1 if row['age2015'] > (60 + 10) else 2,
+        axis=1
+    )
+    stands_org['age2015'] = stands_org['age2015'].apply(lambda x: 890 if x > 900 else x)
+    
+    columns_to_keep = ['theme0', 'thlb', 'au', 'ldspp', 'age2015', 'shape_area', 'geometry','forest_type']
+    stands = stands_org[columns_to_keep].copy()
+    # stands['theme0'] = 'tsa01'
+    columns = ['theme0'] + \
+              [col for col in stands.columns if col not in ['theme0', 'forest_type']]  # Exclude these two
+    columns.insert(4, 'forest_type')  # Insert 'primary_forest' at the 4th position
+    stands = stands[columns]  # Apply new order
+    
+    stands = stands.rename(columns={'thlb': 'theme1', 'au': 'theme2', 'ldspp': 'theme3', 'forest_type': 'theme5', 'age2015': 'age', 'shape_area': 'area' })
+    
+    stands['area'] = stands.geometry.area * 0.0001
+    # This code changes the type of "theme2" into integer
+    stands['theme2'] = stands['theme2'].astype(int)
+    # stands = ensure_missing_values(stands)
+    stands.insert(4, 'theme4', stands['theme2'])
+    
+    
+    # replacing leading species names with their codes
+    for index, row in stands.iterrows():
+        stands.at[index,'theme6'] = canf.loc[row['theme3'],'canfi_species']
+    stands['theme3'] = stands['theme6']
+    # stands = stands.drop('theme6',axis=1)
+    # stands['theme4'] = stands['theme2']
+    stands['theme3'] = stands['theme3'] .astype(int)
+    return stands
+
+def curve_points_generator(stands, yld, canf):
+    # Creating AU table from stands table and renaming the column to AU. The AU table is then joined with yld table.
+    AU = pd.DataFrame(stands['theme2']).drop_duplicates()
+    AU.rename(columns = {'theme2':'AU'},inplace=True)
+    # Inner joining AU and yld tables. The results of the code will be a yield table (yldmerged) that has AU column.
+    yldmerged = pd.merge(AU, yld, on=['AU'], how='inner')
+    
+    yldmerged['canfi_species'] = yldmerged.apply(lambda row: canf.loc[row['LDSPP'], 'canfi_species'], axis=1)
+    
+    curve_points_table = yldmerged
+    # Adding 'curve_id' and 'canfi_species' columns to curve_points_table
+    curve_points_table ['curve_id'] = curve_points_table ['AU']
+    curve_points_table ['canfi_species'] = yldmerged ['canfi_species'].astype(int)
+    
+    columns_to_index_yld = ['AU']
+    
+    curve_points_table = curve_points_table.set_index(columns_to_index_yld)
+    return curve_points_table
+
+def fm_bootstrapper(base_year, horizon, period_length, max_age, stands, curve_points_table, tvy_name):
+    theme_cols=['theme0', # TSA 
+                'theme1', # THLB
+                'theme2', # AUs
+                'theme3', # leading species code
+                'theme4',  # yield curve ID
+                'theme5',  # forest type
+               ]
+    basecodes = [list(map(lambda x: str(x), stands[tc].unique())) for tc in theme_cols]
+    basecodes[2] = list(set(basecodes[2] + list(stands['theme2'].astype(str))))
+    basecodes[3] = list(set(basecodes[3] + list(stands['theme3'].astype(str))))
+    # basecodes[4] = list(set(basecodes[4] + list((stands['theme2'] * 1000 + 1).astype(str)) + list((stands['theme2'] * 1000 + 2).astype(str))))
+    basecodes[4] = list(set(basecodes[4] + list(stands['theme4'].astype(str))))
+    basecodes[5] = ['1', '2']
+    
+    fm = ws3.forest.ForestModel(model_name='ecotest',
+                                model_path='data',
+                                base_year=base_year,
+                                horizon=horizon,
+                                period_length=period_length,
+                                max_age=max_age)
+    
+    for ti, t in enumerate(theme_cols):
+        fm.add_theme(t, basecodes[ti])
+    
+    gstands = stands.groupby(theme_cols+['age'])
+    
+    age_cutoff = 600
+    for name, group in gstands:
+        dtk, age, area = tuple(map(lambda x: str(x), name[:-1])), int(name[-1]), group['area'].sum()
+        if dtk not in fm.dtypes:
+            fm.dtypes[dtk] = ws3.forest.DevelopmentType(dtk, fm)
+        fm.dtypes[dtk].area(0, age, area)
+    
+    curve_points_table['forest_type'] = 1
+    new_rows = curve_points_table.copy()
+    new_rows["forest_type"] += 1
+    
+    # Combine original and new rows
+    curve_points_table = pd.concat([curve_points_table, new_rows]).sort_index().reset_index(drop=True)
+    
+    
+    tot=[]
+    swd=[]
+    hwd=[]
+    for AU, au_row in curve_points_table.iterrows():
+        yname = 's%04d' % int(au_row.canfi_species)    
+        curve_id = au_row.curve_id
+        forest_type = au_row.forest_type
+        mask = ('?', '?', str(curve_id), '?', str(curve_id), str(forest_type))
+        points = [(x*10, int(au_row['X%i' % (x*10)])) for x in range(36)]
+        c = fm.register_curve(ws3.core.Curve(yname, points=points, type='a', is_volume=True, xmax=max_age, period_length=period_length))
+        # print('*Y', ' '.join(v for v in mask), file=file)
+        # print(yname, '1', ' '.join(str(int(c[x])) for x in range(0, 350, 10)), file=file)
+        fm.yields.append((mask, 'a', [(yname, c)])) # only if not already present?
+        fm.ynames.add(yname) 
+        for dtk in fm.unmask(mask): 
+            fm.dtypes[dtk].add_ycomp('a', yname, c)
+        
+        if yname not in tot:
+            tot.append(yname)
+        if int(au_row.canfi_species) > 1200:
+            if yname not in hwd: hwd.append(yname)
+        else:
+            if yname not in swd: swd.append(yname)
+    
+    expr = '_SUM(%s)' % ', '.join(fm.ynames)
+    expr_h = '_SUM(%s)' % ', '.join(hwd)
+    expr_s = '_SUM(%s)' % ', '.join(swd)
+    ycomps = [(tvy_name, expr), ('swdvol', expr_s), ('hwdvol', expr_h)]
+    fm.yields.append((('?', '?', '?', '?', '?', '?'), 'c', ycomps))
+    fm.ynames.update([tvy_name, 'swdvol', 'hwdvol'])
+    # for dtk in fm.dtypes.keys(): fm.dtypes[dtk].add_ycomp('c', tvy_name, expr)  
+    for k in fm.unmask(('?', '?', '?', '?', '?', '?')):
+        for yname, ycomp in ycomps:
+            fm.dtypes[k].add_ycomp('c', yname, ycomp)
+    
+    
+    acode = 'harvest'
+    oe = '_age >= 90 and _age <= 600' # operability expression
+    # print('*CASE', acode, file=file)
+    fm.transitions[acode] = {}
+    record_au = set()
+    for au_id, au_row in stands.iterrows():
+        if au_row.theme2 in record_au: continue
+        if not au_row.theme1: continue
+        au = au_row.theme2
+        target_curve_id = au
+        smask = ('?', '1' , str(au), '?', '?', '?')
+        tmask = ('?', '?' , '?', '?', str(target_curve_id), '2')
+        target = [(tmask, 1.0, None, None, None, None, None)] # list of one (single target... not modelling "divergent" transitions)
+        fm.actions[acode] = ws3.forest.Action(acode, targetage=0, is_harvest=True)
+        fm.oper_expr[acode] = {smask:oe}        
+        fm.transitions[acode].update({smask:{'':target}}) # the '' is a blank source 
+        record_au.add(au_row.theme2)   
+        for dtk in fm.unmask(smask):
+            dt = fm.dtypes[dtk]
+            dt.oper_expr[acode] = [oe]
+            fm.dtypes[dtk].transitions[acode, -1] = target       
+    fm.compile_actions()
+    return fm
+
+def carbon_curve_points(fm):
+    fm.initialize_areas()
+    fm.add_null_action()
+    fm.reset_actions()
+    fm.grow()
+    
+    # Define Disturance Types
+    disturbance_type_mapping = [{'user_dist_type': 'harvest', 'default_dist_type': 'Clearcut harvesting without salvage'},
+                                {'user_dist_type': 'fire', 'default_dist_type': 'Wildfire'}]
+    for dtype_key in fm.dtypes:
+        fm.dt(dtype_key).last_pass_disturbance = 'fire' if dtype_key[2] == dtype_key[4] else 'harvest'
+    
+    sit_config, sit_tables = fm.to_cbm_sit(softwood_volume_yname='swdvol', 
+                                           hardwood_volume_yname='hwdvol', 
+                                           admin_boundary='British Columbia', 
+                                           eco_boundary='Montane Cordillera',
+                                           disturbance_type_mapping=disturbance_type_mapping,
+                                           include_empty_dtypes=True)
+    
+    # Define Time Steps
+    n_steps = fm.horizon * fm.period_length
+    
+    # Run CBM and Generate CBM 0utputs
+    cbm_output = run_cbm_emissionstock(sit_config, sit_tables, n_steps)
+    
+    # Flag 'harvest' as a harvesting action in the ws3 model
+    harvest_acode='harvest'
+    fm.actions[harvest_acode].is_harvest = True
+    
+    # Define Carbon Pools
+    biomass_pools = ['SoftwoodMerch','SoftwoodFoliage', 'SoftwoodOther', 'SoftwoodCoarseRoots','SoftwoodFineRoots',                    
+                     'HardwoodMerch', 'HardwoodFoliage', 'HardwoodOther', 'HardwoodCoarseRoots', 'HardwoodFineRoots']
+    dom_pools = ['AboveGroundVeryFastSoil', 'BelowGroundVeryFastSoil', 'AboveGroundFastSoil', 'BelowGroundFastSoil',
+                 'MediumSoil', 'AboveGroundSlowSoil', 'BelowGroundSlowSoil', 'SoftwoodStemSnag', 'SoftwoodBranchSnag',
+                 'HardwoodStemSnag', 'HardwoodBranchSnag']
+    emissions_pools = ['CO2', 'CH4', 'CO', 'NO2']
+    products_pools = ['Products']
+    ecosystem_pools = biomass_pools + dom_pools
+    all_pools = biomass_pools + dom_pools + emissions_pools + products_pools
+    
+    # Define Carbon Fluxes
+    annual_process_fluxes = [
+        'DecayDOMCO2Emission',
+        'DeltaBiomass_AG',
+        'DeltaBiomass_BG',
+        'TurnoverMerchLitterInput',
+        'TurnoverFolLitterInput',
+        'TurnoverOthLitterInput',
+        'TurnoverCoarseLitterInput',
+        'TurnoverFineLitterInput',
+        'DecayVFastAGToAir',
+        'DecayVFastBGToAir',
+        'DecayFastAGToAir',
+        'DecayFastBGToAir',
+        'DecayMediumToAir',
+        'DecaySlowAGToAir',
+        'DecaySlowBGToAir',
+        'DecaySWStemSnagToAir',
+        'DecaySWBranchSnagToAir',
+        'DecayHWStemSnagToAir',
+        'DecayHWBranchSnagToAir'
+    ]
+    
+    npp_fluxes=[
+        'DeltaBiomass_AG', 
+        'DeltaBiomass_BG'
+    ]
+    
+    decay_emissions_fluxes = [
+        'DecayVFastAGToAir',
+        'DecayVFastBGToAir',
+        'DecayFastAGToAir',
+        'DecayFastBGToAir',
+        'DecayMediumToAir',
+        'DecaySlowAGToAir',
+        'DecaySlowBGToAir',
+        'DecaySWStemSnagToAir',
+        'DecaySWBranchSnagToAir',
+        'DecayHWStemSnagToAir',
+        'DecayHWBranchSnagToAir'
+    ]
+    
+    disturbance_production_fluxes = [
+        'DisturbanceSoftProduction',
+        'DisturbanceHardProduction',
+        'DisturbanceDOMProduction'   
+    ]
+    
+    disturbance_emissions_fluxes = [
+        'DisturbanceMerchToAir',
+        'DisturbanceFolToAir',
+        'DisturbanceOthToAir',
+        'DisturbanceCoarseToAir',
+        'DisturbanceFineToAir',
+        'DisturbanceVFastAGToAir',
+        'DisturbanceVFastBGToAir',
+        'DisturbanceFastAGToAir',
+        'DisturbanceFastBGToAir',
+        'DisturbanceMediumToAir',
+        'DisturbanceSlowAGToAir',
+        'DisturbanceSlowBGToAir',
+        'DisturbanceSWStemSnagToAir',
+        'DisturbanceSWBranchSnagToAir',
+        'DisturbanceHWStemSnagToAir',
+        'DisturbanceHWBranchSnagToAir'   
+    ]
+    
+    all_fluxes = [
+        'DisturbanceCO2Production',
+        'DisturbanceCH4Production',
+        'DisturbanceCOProduction',
+        'DisturbanceBioCO2Emission',
+        'DisturbanceBioCH4Emission',
+        'DisturbanceBioCOEmission',
+        'DecayDOMCO2Emission',
+        'DisturbanceSoftProduction',
+        'DisturbanceHardProduction',
+        'DisturbanceDOMProduction',
+        'DeltaBiomass_AG',
+        'DeltaBiomass_BG',
+        'TurnoverMerchLitterInput',
+        'TurnoverFolLitterInput',
+        'TurnoverOthLitterInput',
+        'TurnoverCoarseLitterInput',
+        'TurnoverFineLitterInput',
+        'DecayVFastAGToAir',
+        'DecayVFastBGToAir',
+        'DecayFastAGToAir',
+        'DecayFastBGToAir',
+        'DecayMediumToAir',
+        'DecaySlowAGToAir',
+        'DecaySlowBGToAir',
+        'DecaySWStemSnagToAir',
+        'DecaySWBranchSnagToAir',
+        'DecayHWStemSnagToAir',
+        'DecayHWBranchSnagToAir',
+        'DisturbanceMerchToAir',
+        'DisturbanceFolToAir',
+        'DisturbanceOthToAir',
+        'DisturbanceCoarseToAir',
+        'DisturbanceFineToAir',
+        'DisturbanceDOMCO2Emission',
+        'DisturbanceDOMCH4Emission',
+        'DisturbanceDOMCOEmission',
+        'DisturbanceMerchLitterInput',
+        'DisturbanceFolLitterInput',
+        'DisturbanceOthLitterInput',
+        'DisturbanceCoarseLitterInput',
+        'DisturbanceFineLitterInput',
+        'DisturbanceVFastAGToAir',
+        'DisturbanceVFastBGToAir',
+        'DisturbanceFastAGToAir',
+        'DisturbanceFastBGToAir',
+        'DisturbanceMediumToAir',
+        'DisturbanceSlowAGToAir',
+        'DisturbanceSlowBGToAir',
+        'DisturbanceSWStemSnagToAir',
+        'DisturbanceSWBranchSnagToAir',
+        'DisturbanceHWStemSnagToAir',
+        'DisturbanceHWBranchSnagToAir'
+    ]
+    
+    grossgrowth_ag = [
+        "DeltaBiomass_AG",
+        "TurnoverMerchLitterInput",
+        "TurnoverFolLitterInput",
+        "TurnoverOthLitterInput",
+    ]
+    
+    grossgrowth_bg = [
+        "DeltaBiomass_BG",
+        "TurnoverCoarseLitterInput",
+        "TurnoverFineLitterInput",
+    ]
+    
+    product_flux = [
+         "DisturbanceSoftProduction",
+         "DisturbanceHardProduction",
+         "DisturbanceDOMProduction",
+    ]
+    
+    sit_yield = sit_tables['sit_yield']
+    
+    
+    sit_events = sit_tables['sit_events']
+    
+    sit_inventory = sit_tables['sit_inventory']
+    
+    # Set Age and Area to 1 and 1.0
+    df = sit_inventory
+    df['age'] = df['age'].apply(lambda x: 1)
+    df['area'] = df['area'].apply(lambda x: 1.0)
+    df = df.drop_duplicates(ignore_index=True)
+    
+    sit_tables['sit_inventory'] = df
+    
+    # Run CBM and Generate CBM 0utputs
+    cbm_output_curves = run_cbm_emissionstock(sit_config, sit_tables, n_steps=700)
+    
+    # Generate Carbon Pool and Flux Indicators
+    pi = cbm_output_curves.classifiers.to_pandas().merge(cbm_output_curves.pools.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
+    fi = cbm_output_curves.classifiers.to_pandas().merge(cbm_output_curves.flux.to_pandas(), 
+                                                  left_on=["identifier", "timestep"], 
+                                                  right_on=["identifier", "timestep"])
+    
+    # Define Sum Carbon Pools and Sum Carbon Fluxes
+    total_emission = decay_emissions_fluxes + disturbance_emissions_fluxes
+    gross_growth = grossgrowth_ag + grossgrowth_bg
+    
+    sum_pools = ['ecosystem', 'biomass', 'DOM']
+    sum_fluxes = ['total_emission', 'gross_growth', 'net_emission']
+    
+    # Define Development Type Keys
+    pi['dtype_key'] = pi.apply(lambda r: '%s %s %s %s %s %s' % (r['theme0'], r['theme1'], r['theme2'], r['theme3'], r['theme4'], r['theme5']), axis=1)
+    fi['dtype_key'] = fi.apply(lambda r: '%s %s %s %s %s %s' % (r['theme0'], r['theme1'], r['theme2'], r['theme3'], r['theme4'], r['theme5']), axis=1)
+    
+    # Generate Carbon Pool anf Flux Curves
+    c_curves_p = pi.groupby(['dtype_key', 'timestep'], as_index=True)[ecosystem_pools].sum()
+    c_curves_f = fi.groupby(['dtype_key', 'timestep'], as_index=True)[all_fluxes].sum()
+    
+    # Generate sum carbon pool curves
+    c_curves_p['ecosystem'] = c_curves_p[ecosystem_pools].sum(axis=1)
+    c_curves_p['biomass'] = c_curves_p[biomass_pools].sum(axis=1)
+    c_curves_p['DOM'] = c_curves_p[dom_pools].sum(axis=1)
+    
+    c_curves_f['total_emission'] = 44/12 * c_curves_f[total_emission].sum(axis=1)
+    c_curves_f['gross_growth'] = 44/12 * c_curves_f[gross_growth].sum(axis=1)
+    c_curves_f['net_emission'] = c_curves_f['total_emission'] - c_curves_f['gross_growth']
+    
+    c_curves_f.loc[c_curves_f.index.get_level_values('timestep') == 0] = c_curves_f.loc[c_curves_f.index.get_level_values('timestep') == 1].values
+    return c_curves_p, c_curves_f
+
+
+
 def schedule_harvest_areacontrol(fm, max_harvest=1., period=None, acode='harvest', util=0.85, 
                                  target_masks=None, target_areas=None,
                                  target_scalefactors=None,
@@ -79,7 +469,7 @@ def forest_type_indicator(fm, case_study, obj_mode, scenario_name):
     plt.legend()    
     # Show the plot
     plt.show()
-    return df
+
 
 ################################################
 # HWP effect
@@ -272,7 +662,7 @@ def plot_scenario(df, case_study, obj_mode, scenario_name):
     plt.savefig(file_path)
     plt.show()
     plt.close()
-    print(f"Plot saved to {file_path}")    
+    # print(f"Plot saved to {file_path}")    
     return fig, ax
 
 def plot_results(fm):
@@ -350,7 +740,7 @@ def plot_scenario_maxstock(df, case_study, obj_mode, scenario_name):
     plt.savefig(file_path)
     plt.show()
     plt.close()
-    print(f"Plot saved to {file_path}")
+    # print(f"Plot saved to {file_path}")
     return fig, ax
 
 def compile_scenario_minemission(fm, case_study, obj_mode, scenario_name):
@@ -424,7 +814,7 @@ def plot_scenario_minemission(df, case_study, obj_mode, scenario_name):
     plt.savefig(file_path)
     plt.show()
     plt.close()
-    print(f"Plot saved to {file_path}") 
+    # print(f"Plot saved to {file_path}") 
     return fig, ax
 
 ################################################
@@ -701,15 +1091,14 @@ def gen_scenario(fm, clt_percentage=1.0,hwp_pool_effect_value=0., displacement_e
         cname = 'cgen_bd' # define general constraint (total carbon stock)
         coeff_funcs[cname] = partial(cmp_c_c_bd, expr='1.')
         cgen_data [cname] = cgen_bd
-    # import pdb
-    # pdb.set_trace()
+
     return fm.add_problem(name, coeff_funcs, cflw_e, cgen_data=cgen_data, acodes=acodes, sense=sense, mask=mask)
 
 def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
-    import gurobipy as grb
+    # import gurobipy as grb
     # initial_gs =21980. #m3
     initial_gs = fm.inventory(0, 'totvol')
-    aac =  296920. # AAC per year * 10
+    # aac =  296920. # AAC per year * 10
     cflw_ha_max_stock = {}
     cflw_hv_max_stock = {}
     cgen_ha_max_stock = {}
@@ -720,7 +1109,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
 
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
 
     p_max_stock = gen_scenario(fm=fm, 
@@ -756,7 +1145,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
 
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
@@ -789,10 +1178,11 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     return epsilon, cs_max
 
 def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
-    import gurobipy as grb
+
+    # import gurobipy as grb
     # initial_gs =21980. #m3
     initial_gs = fm.inventory(0, 'totvol')
-    aac =  296920. # AAC per year * 10
+    # aac =  296920. # AAC per year * 10
     cflw_ha_max_stock = {}
     cflw_hv_max_stock = {}
     cgen_ha_max_stock = {}
@@ -803,7 +1193,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
     
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     
     p_max_stock = gen_scenario(fm=fm, 
@@ -837,7 +1227,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
 
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
@@ -864,11 +1254,8 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
     # print(lhs_values)
     cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
     epsilon = (cs_max - cs_min)/n
-    print(cs_max)
-
     bd_values = []
     cs_values = []
-
     for i in range(0, n):
         fm.reset()
         cflw_ha = {}
@@ -880,7 +1267,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
         cgen_bd = {}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
         cgen_cs = {'lb':{10: 0}, 'ub':{10: cs_min + i * epsilon}}
@@ -907,25 +1294,27 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
         cs_val = lhs_values['gen-ub_010_cgen_cs']
         bd_values.append(obj_val)
         cs_values.append(cs_val)
-        breakpoint()
+
+
+    # # Plot Tradeoff Curve (Pareto Front)
+    # plt.figure(figsize=(8, 5))
+    # plt.plot(cs_values, bd_values, marker='o', linestyle='-', label="Pareto Front")
+    # plt.xlabel("carbon stock")
+    # plt.ylabel("biodiversity")
+    # plt.title("Tradeoff Curve")
+    # plt.grid(True)
+    # plt.legend()
+    # plt.show()
     print(bd_values)
     print(cs_values)
-    # Plot Tradeoff Curve (Pareto Front)
-    plt.figure(figsize=(8, 5))
-    plt.plot(cs_values, bd_values, marker='o', linestyle='-', label="Pareto Front")
-    plt.xlabel("carbon stock")
-    plt.ylabel("biodiversity")
-    plt.title("Tradeoff Curve")
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    return bd_values, cs_values
 
 def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP):
     
-    import gurobipy as grb
+    # import gurobipy as grb
     # initial_gs =21980. #m3  
     initial_gs = fm.inventory(0, 'totvol')
-    aac =  296920. # AAC per year * 10
+    # aac =  296920. # AAC per year * 10
     hv_values = []
     cs_values = []
 
@@ -940,7 +1329,7 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
         cgen_bd = {}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
         cgen_cs = {'lb':{10: cs_max-i*epsilon}, 'ub':{10: cs_max}}
@@ -967,25 +1356,27 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
         cs_val = lhs_values['gen-ub_010_cgen_cs']
         hv_values.append(obj_val)
         cs_values.append(cs_val)
-        breakpoint()
+
+    # # Plot Tradeoff Curve (Pareto Front)
+    # plt.figure(figsize=(8, 5))
+    # plt.plot(cs_values, hv_values, marker='o', linestyle='-', label="Pareto Front")
+    # plt.xlabel("carbon stock")
+    # plt.ylabel("harvested volume")
+    # plt.title("Tradeoff Curve")
+    # plt.grid(True)
+    # plt.legend()
+    # plt.show()
     print(hv_values)
     print(cs_values)
-    # Plot Tradeoff Curve (Pareto Front)
-    plt.figure(figsize=(8, 5))
-    plt.plot(cs_values, hv_values, marker='o', linestyle='-', label="Pareto Front")
-    plt.xlabel("carbon stock")
-    plt.ylabel("harvested volume")
-    plt.title("Tradeoff Curve")
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    return hv_values, cs_values
 
 
 def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n, solver=ws3.opt.SOLVER_PULP):
-    import gurobipy as grb
+
+    # import gurobipy as grb
     # initial_gs =21980. #m3 
     initial_gs = fm.inventory(0, 'totvol')
-    aac =  296920. # AAC per year * 10
+    # aac =  296920. # AAC per year * 10
     cflw_ha_max_bd = {}
     cflw_hv_max_bd = {}
     cgen_ha_max_bd = {}
@@ -996,7 +1387,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
     
     cflw_ha_max_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_bd = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_max_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     
     p_max_bd = gen_scenario(fm=fm, 
@@ -1030,7 +1421,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
 
     cflw_ha_min_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_bd = ({p:0.05 for p in fm.periods}, 1)
-    cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+    # cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
     cgen_gs_min_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
     cgen_bd_min_bd = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
 
@@ -1072,7 +1463,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         cgen_bd = {}
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
         cgen_bd = {'lb':{10:  bd_max - i * epsilon}, 'ub':{10: bd_max}}
@@ -1099,23 +1490,25 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         bd_val = lhs_values['gen-ub_010_cgen_bd']
         hv_values.append(obj_val)
         bd_values.append(bd_val)
-        breakpoint()
 
-    # Plot Tradeoff Curve (Pareto Front)
-    plt.figure(figsize=(8, 5))
-    plt.plot(bd_values, hv_values, marker='o', linestyle='-', label="Pareto Front")
-    plt.xlabel("biodiversity")
-    plt.ylabel("harvested volume")
-    plt.title("Tradeoff Curve")
-    plt.grid(True)
-    plt.legend()
-    plt.show()
+    # # Plot Tradeoff Curve (Pareto Front)
+    # plt.figure(figsize=(8, 5))
+    # plt.plot(bd_values, hv_values, marker='o', linestyle='-', label="Pareto Front")
+    # plt.xlabel("biodiversity")
+    # plt.ylabel("harvested volume")
+    # plt.title("Tradeoff Curve")
+    # plt.grid(True)
+    # plt.legend()
+    # plt.show()
+    print(hv_values)
+    print(bd_values)
+    return hv_values, bd_values
 
 def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name='no_cons', solver=ws3.opt.SOLVER_PULP):
-    import gurobipy as grb
+    # import gurobipy as grb
     # initial_gs =21980. #m3
     initial_gs = fm.inventory(0, 'totvol')
-    aac =  296920. # AAC per year * 10
+    # aac =  296920. # AAC per year * 10
 
     cflw_ha = {}
     cflw_hv = {}
@@ -1138,42 +1531,42 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         print('running lowest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-10*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == 'business as usual':
         print('running business as usual scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max - 8 * epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == '40% of highest carbon stock':
         print('running 40% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-6*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == '60% of highest carbon stock':
         print('running 60% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-4*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == '20% of highest carbon stock':
         print('running 20% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max-2*epsilon}, 'ub':{10: cs_max}}
     elif scenario_name == 'highest carbon stock':
         print('running highest carbon scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
-        cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
+        # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
         cgen_cs = {'lb':{10: cs_max}, 'ub':{10: cs_max}} 
     else:
@@ -1211,20 +1604,20 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
     
     if obj_mode == 'max_hv' or obj_mode == 'min_ha':
         df = compile_scenario(fm, case_study, obj_mode, scenario_name)
-        plot_scenario(df, case_study, obj_mode, scenario_name)
+        # plot_scenario(df, case_study, obj_mode, scenario_name)
     elif obj_mode == 'max_st':
         df = compile_scenario_maxstock(fm, case_study, obj_mode, scenario_name)
-        plot_scenario_maxstock(df, case_study, obj_mode, scenario_name) 
+        # plot_scenario_maxstock(df, case_study, obj_mode, scenario_name) 
     elif obj_mode == 'min_em':
         df = compile_scenario_minemission(fm, case_study, obj_mode, scenario_name)
-        plot_scenario_minemission(df, case_study, obj_mode, scenario_name)
+        # plot_scenario_minemission(df, case_study, obj_mode, scenario_name)
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode) 
-    forest_type = forest_type_indicator(fm, case_study, obj_mode, scenario_name)    
-    print("------------------------------------------------")
-    kpi_socioeconomic(fm)
-    print("------------------------------------------------")
-    return sch
+    # forest_type = forest_type_indicator(fm, case_study, obj_mode, scenario_name)    
+    # print("------------------------------------------------")
+    # kpi_socioeconomic(fm)
+    # print("------------------------------------------------")
+    return sch, df
     
 ##############################################################
 # Implement a simple function to run CBM from ws3 export data
@@ -1378,7 +1771,7 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
     concrete_density = 2400 #kg/m3
     co2_concrete_landfill_factor = 0.00517 * concrete_density
     # sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name, solver='gurobi')
-    sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name) #This uses pulp
+    sch_alt_scenario, df_plot = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name) #This uses pulp
 
     # df = compile_scenario(fm, case_study, obj_mode, scenario_name)
     # plot_scenario(df, case_study, obj_mode, scenario_name)
@@ -1398,7 +1791,7 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
                                        eco_boundary='Montane Cordillera',
                                        disturbance_type_mapping=disturbance_type_mapping)
     cbm_output_1, cbm_output_2 = run_cbm(df_carbon_stock, df_carbon_emission,  df_carbon_emission_immed, df_emission_concrete_manu, df_emission_concrete_landfill, sit_config, sit_tables, n_steps, release_immediately_value, plot = False)
-    return cbm_output_1, cbm_output_2     
+    return df_plot, cbm_output_1, cbm_output_2    
 
 def stock_emission_scenario_equivalent(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode):   
     decay_rates = {'plumber':math.log(2.)/35., 'ppaper':math.log(2.)/2.}
@@ -1474,12 +1867,12 @@ def scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, 
     ax.set_title('Net emission difference between base and alternative scenarios')
     ax.set_xlabel('Year')
     ax.set_ylabel('Net Carbon emission diffrence')   
-    # dollar_per_ton = abs(budget_input / dif_scenario.iloc[:25]['Net emission'].sum()) # Calculate for the next 25 years
+    dollar_per_ton = abs(budget_input / dif_scenario.iloc[:25]['Net emission'].sum()) # Calculate for the next 25 years
     # print( "Net emission difference", dif_scenario.iloc[:25]['Net emission'].sum())
     # print( "Net emission base scenario", cbm_output_4.iloc[:25]['Net emission'].sum())
     # print( "Net emission alternative scenario", cbm_output_2.iloc[:25]['Net emission'].sum())    
 
-    dollar_per_ton = abs(budget_input / dif_scenario['Net emission'].sum()) # Calculate for the next 25 years
+    # dollar_per_ton = abs(budget_input / dif_scenario['Net emission'].sum()) # Calculate for the next 25 years
     print( "Net emission difference", dif_scenario['Net emission'].sum())
     print( "Net emission base scenario", cbm_output_4['Net emission'].sum())
     print( "Net emission alternative scenario", cbm_output_2['Net emission'].sum()) 
@@ -1523,7 +1916,7 @@ def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode, show_graph=
     if show_graph:
         plt.show()
     plt.close()   
-    print(f"Plot saved to {file_path}")
+    # print(f"Plot saved to {file_path}")
     return comparison_df
 
 def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shannon_10_base, case_study, obj_mode, show_graph=False):
@@ -1532,9 +1925,12 @@ def compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shanno
     import os
 
     colors = {
-        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 'Alder': '#00FF00',
-        'DougFir': '#00FFFF', 'Hem': '#1E90FF', 'Pine': '#9400D3', 'Spruce': '#FF00FF', 
-        'Birch': '#800080'
+        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
+        'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
+        'Larch': '#000080', 'Maple': '#8B0000', 'Oak': '#FFA500', 
+        'Elm': '#32CD32', 'Chery': '#008080', 'Cypress': '#4682B4', 
+        'Ash': '#A52A2A', 'Hardwoods': '#5F9EA0', 'Others': '#EE82EE'
     }
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 6))
@@ -1615,15 +2011,15 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
             cbm_output_2 = pickle.load(f)
         print("Loaded cbm_output_1 and cbm_output_2 from pickle files.")
     else:
-        cbm_output_1, cbm_output_2 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
+        df_plot_12, cbm_output_1, cbm_output_2 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
         with open(pickle_file_1, 'wb') as f:
             pickle.dump(cbm_output_1, f)
         with open(pickle_file_2, 'wb') as f:
             pickle.dump(cbm_output_2, f)
-        print("Saved cbm_output_1 and cbm_output_2 as pickle files.")
+        # print("Saved cbm_output_1 and cbm_output_2 as pickle files.")
     
-    kpi_age_alt = kpi_age(fm, case_study, obj_mode, scenario_name)
-    portion_10_alt , shannon_10_alt = kpi_species(fm, case_study, obj_mode, scenario_name)
+    # kpi_age_alt = kpi_age(fm, case_study, obj_mode, scenario_name)
+    # portion_10_alt , shannon_10_alt = kpi_species(fm, case_study, obj_mode, scenario_name)
     # kpi_socio_alt, kpi_eco_alt = kpi_socioeconomic(fm)
 
     # Create a folder for csv file outputs
@@ -1663,17 +2059,17 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
         else:
             raise ValueError('Invalid case_study: %s' % case_study)
 
-        cbm_output_3, cbm_output_4 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
+        df_plot_34, cbm_output_3, cbm_output_4 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
         
         # Save cbm_output_3 and cbm_output_4 as pickle
         with open(pickle_file_3, 'wb') as f:
             pickle.dump(cbm_output_3, f)
         with open(pickle_file_4, 'wb') as f:
             pickle.dump(cbm_output_4, f)
-        print("Saved cbm_output_3 and cbm_output_4 as pickle files.")
+        # print("Saved cbm_output_3 and cbm_output_4 as pickle files.")
 
-    kpi_age_base = kpi_age(fm, case_study, obj_mode, scenario_name)
-    portion_10_base , shannon_10_base = kpi_species(fm, case_study, obj_mode, scenario_name)
+    # kpi_age_base = kpi_age(fm, case_study, obj_mode, scenario_name)
+    # portion_10_base , shannon_10_base = kpi_species(fm, case_study, obj_mode, scenario_name)
     # kpi_socio_base, kpi_eco_base = kpi_socioeconomic(fm)
 
     # Save cbm_output_4 as CSV
@@ -1686,18 +2082,19 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
     cbm_output_3_df.to_csv(cbm_output_3_file, index=False)
 
     # Plot scenarios
-    plot_scenarios(cbm_output_1, cbm_output_2, cbm_output_3, cbm_output_4, n_steps, case_study, obj_mode)
+    # plot_scenarios(cbm_output_1, cbm_output_2, cbm_output_3, cbm_output_4, n_steps, case_study, obj_mode)
     
     # Scenario difference plot
-    print("---------------------------------------------------------------------------------------")
-    dif_plot = scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, obj_mode)
+    print("---------------------------------------------------------------------------------------")    
+    # dif_plot = scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, obj_mode)
 
-    compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode)
+    # compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode)
 
-    compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shannon_10_base, case_study, obj_mode)
+    # compare_kpi_species(portion_10_alt , shannon_10_alt, portion_10_base, shannon_10_base, case_study, obj_mode)
 
     # compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_eco_base)
     print("---------------------------------------------------------------------------------------")
+    return df_plot_12, cbm_output_1, cbm_output_2, df_plot_34, cbm_output_3, cbm_output_4
 
 def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
     # Add carbon pools indicators 
@@ -2632,33 +3029,38 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     import pandas as pd
     
     canfi_map_inverse = {
-        '1211': 'AC', 
-        '1201': 'AT', 
-        '304': 'BL', 
-        '1303': 'EP', 
-        '500': 'FDI', 
-        '402': 'HW',
-        '403': 'HM',
-        '204': 'PLI', 
-        '101': 'SB', 
-        '104': 'SE', 
-        '105': 'SW', 
-        '100': 'SX',
-        '1200': 'SPP',
-        '206': 'ALB',
-        '1308': 'PAP',
-        '702': 'PLI'
+        '1211': 'AC', '1201': 'AT', '300': 'BL', '301': 'BL', '302': 'BL', '303': 'BL', '304': 'BL', '305': 'BL', '1303': 'EP', '500': 'FDI',
+        '400': 'HW', '401': 'HW', '402': 'HW', '403': 'HM', '202': 'PL', '203': 'PL', '204': 'PL', '204': 'PLI', '205': 'PL', '101': 'SB', 
+        '102': 'SB', '103':'SB', '104': 'SE', '105': 'SW', '106': 'SB' ,'100': 'SX', '1201': 'AT+SX', '1203': 'AT+SX', '1206': 'AT+SX', 
+        '100': 'SX+AT','1200': 'SPP', '206': 'ALB', '1308': 'PAP', '701': 'CW', '702': 'CW', '1205': 'DEL', '600': 'LARI', '601': 'LARI', 
+        '602': 'LARI', '605': 'LARI', '208': 'PON', '209': 'PON', '211': 'PON', '216': 'PON', '603': 'LARI', '1802': 'DR', '604': 'LARI',
+        '201': 'MON', '1150': 'UNKN', '1001': 'YCP', '1100': 'UNKN', '1301': 'PAP', '1304': 'PAP', '1305': 'PAP', '1400': 'MP', '1401': 'MP', 
+        '1403': 'MP', '1404': 'MP', '1405': 'MP', '1406': 'MP', '1410': 'MP', '1411': 'MP', '1500': 'UNKN', '1550': 'UNKN', '1601': 'UNKN', 
+        '1701': 'UNKN', '1800': 'D', '1900': 'UNKN', '2000': 'UNKN', '2100': 'OK', '2101': 'OK', '2102': 'OK', '2104': 'OK', '2108': 'OK', 
+        '2200': 'el', '2201': 'el', '2202': 'el', '2203': 'el', '2801': 'BC', '2802': 'BC', '2804': 'BC', '3000': 'UNKN', '3400': 'SH', 
+        '3401': 'SH', '3402': 'SH', '3403': 'SH', '3405': 'SH', '3500': 'UNKN', '3900': 'UNKN', '3920': 'UNKN', '3940': 'UNKN', '3960': 'SH', 
+        '4000': 'DW', '4500': 'DW', '5000': 'DW', '5500': 'DW'
     }
     
-    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP']
+    Aspen = ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP', 'DEL']
     Bal = ['B', 'BA', 'BG', 'BL']
-    Cedar = ['CW', 'YC', 'PLI']
+    Cedar = ['CW', 'YC']
     Alder = ['D', 'DR']
     DougFir = ['F', 'FD', 'FDC', 'FDI']
     Hem = ['H', 'HM', 'HW']
-    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB']
+    Pine = ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB', 'PON', 'MON']
     Spruce = ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB']
     Birch = ['PAP']
+    Larch = ['LARI']
+    Maple = ['MP']
+    Oak = ['OK']
+    Elm = ['el']
+    Chery = ['BC']
+    Cypress = ['YCP']
+    Ash = ['SH']
+    Hardwoods = ['DW']
+    Others = ['UNKN']
+    
     
     def find_corresponding_species(number):
         values = canfi_map_inverse.get(str(number))
@@ -2685,6 +3087,24 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
                 return 'Spruce'
             elif value in Birch:
                 return 'Birch'
+            elif value in Larch:
+                return 'Larch'
+            elif value in Maple:
+                return 'Maple'
+            elif value in Oak:
+                return 'Oak'
+            elif value in Elm:
+                return 'Elm'
+            elif value in Chery:
+                return 'Chery'
+            elif value in Cypress:
+                return 'Cypress'
+            elif value in Ash:
+                return 'Ash'
+            elif value in Hardwoods:
+                return 'Hardwoods'
+            elif value in Others:
+                return 'Others'
         
         return "No matching set found."
     
@@ -2692,16 +3112,13 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     
     bin_edges = np.arange(0, 480, 20)
     colors = {
-        'Aspen': '#FF0000',
-        'Bal': '#FF8C00',
-        'Cedar': '#FFD700',
-        'Alder': '#00FF00',
-        'DougFir': '#00FFFF',
-        'Hem': '#1E90FF',
-        'Pine': '#9400D3',
-        'Spruce': '#FF00FF',
-        'Birch': '#800080'
-    }  
+        'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
+        'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
+        'Larch': '#000080', 'Maple': '#8B0000', 'Oak': '#FFA500', 
+        'Elm': '#32CD32', 'Chery': '#008080', 'Cypress': '#4682B4', 
+        'Ash': '#A52A2A', 'Hardwoods': '#5F9EA0', 'Others': '#EE82EE'
+    }
     
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     
@@ -2748,7 +3165,7 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
     if show_graph:
         plt.show()
     plt.close()   
-    print(f"Plot saved to {file_path}")
+    # print(f"Plot saved to {file_path}")
     
     # Convert old growth data to a DataFrame for better display
     old_growth_df = pd.DataFrame(old_growth_data).fillna(0)
@@ -2784,7 +3201,7 @@ def kpi_age(fm, case_study, obj_mode, scenario_name, base_path='.', show_graph=F
         plt.show()
     plt.close()
     
-    print(f"Clustered column plot saved to {clustered_chart_path}")
+    # print(f"Clustered column plot saved to {clustered_chart_path}")
     
     return old_growth_df
 
@@ -2797,23 +3214,39 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
 
     # Species codes mapping and color dictionary
     canfi_map_inverse = {
-        '1211': 'AC', '1201': 'AT', '304': 'BL', '1303': 'EP', '500': 'FDI',
-        '402': 'HW', '403': 'HM', '204': 'PL', '204': 'PLI', '101': 'SB', 
-        '104': 'SE', '105': 'SW', '100': 'SX', '1201': 'AT+SX', '100': 'SX+AT',
-        '1200': 'SPP', '206': 'ALB', '1308': 'PAP', '702': 'PLI'
+        '1211': 'AC', '1201': 'AT', '300': 'BL', '301': 'BL', '302': 'BL', '303': 'BL', '304': 'BL', '305': 'BL', '1303': 'EP', '500': 'FDI',
+        '400': 'HW', '401': 'HW', '402': 'HW', '403': 'HM', '202': 'PL', '203': 'PL', '204': 'PL', '204': 'PLI', '205': 'PL', '101': 'SB', 
+        '102': 'SB', '103':'SB', '104': 'SE', '105': 'SW', '106': 'SB' ,'100': 'SX', '1201': 'AT+SX', '1203': 'AT+SX', '1206': 'AT+SX', 
+        '100': 'SX+AT','1200': 'SPP', '206': 'ALB', '1308': 'PAP', '701': 'CW', '702': 'CW', '1205': 'DEL', '600': 'LARI', '601': 'LARI', 
+        '602': 'LARI', '605': 'LARI', '208': 'PON', '209': 'PON', '211': 'PON', '216': 'PON', '603': 'LARI', '1802': 'DR', '604': 'LARI',
+        '201': 'MON', '1150': 'UNKN', '1001': 'YCP', '1100': 'UNKN', '1301': 'PAP', '1304': 'PAP', '1305': 'PAP', '1400': 'MP', '1401': 'MP', 
+        '1403': 'MP', '1404': 'MP', '1405': 'MP', '1406': 'MP', '1410': 'MP', '1411': 'MP', '1500': 'UNKN', '1550': 'UNKN', '1601': 'UNKN', 
+        '1701': 'UNKN', '1800': 'D', '1900': 'UNKN', '2000': 'UNKN', '2100': 'OK', '2101': 'OK', '2102': 'OK', '2104': 'OK', '2108': 'OK', 
+        '2200': 'el', '2201': 'el', '2202': 'el', '2203': 'el', '2801': 'BC', '2802': 'BC', '2804': 'BC', '3000': 'UNKN', '3400': 'SH', 
+        '3401': 'SH', '3402': 'SH', '3403': 'SH', '3405': 'SH', '3500': 'UNKN', '3900': 'UNKN', '3920': 'UNKN', '3940': 'UNKN', '3960': 'SH', 
+        '4000': 'DW', '4500': 'DW', '5000': 'DW', '5500': 'DW'
     }
     
     # Species groups
     species_groups = {
-        'Aspen': ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP'],
+        'Aspen': ['AC', 'ACT', 'AT', 'EP', 'VB', 'MB', 'AT+SX', 'SPP', 'DEL'],
         'Bal': ['B', 'BA', 'BG', 'BL'],
-        'Cedar': ['CW', 'YC', 'PLI'],
+        'Cedar': ['CW', 'YC'],
         'Alder': ['D', 'DR'],
         'DougFir': ['F', 'FD', 'FDC', 'FDI'],
         'Hem': ['H', 'HM', 'HW'],
-        'Pine': ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB'],
+        'Pine': ['PA', 'PL', 'PLC', 'PW', 'PLI', 'PY', 'ALB', 'PON', 'MON'],
         'Spruce': ['S', 'SS', 'SW', 'SX', 'SE', 'SXW', 'SB', 'SX+AT'],
-        'Birch': ['PAP']
+        'Birch': ['PAP'],
+        'Larch': ['LARI'],
+        'Maple': ['MP'],
+        'Oak': ['OK'],
+        'Elm': ['el'],
+        'Chery': ['BC'],
+        'Cypress': ['YCP'],
+        'Ash': ['SH'],
+        'Hardwoods': ['DW'],
+        'Others': ['UNKN']
     }
 
     
@@ -2821,7 +3254,10 @@ def kpi_species(fm, case_study, obj_mode, scenario_name, base_path='.', show_gra
     colors = {
         'Aspen': '#FF0000', 'Bal': '#FF8C00', 'Cedar': '#FFD700', 
         'Alder': '#00FF00', 'DougFir': '#00FFFF', 'Hem': '#1E90FF', 
-        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080'
+        'Pine': '#9400D3', 'Spruce': '#FF00FF', 'Birch': '#800080',
+        'Larch': '#000080', 'Maple': '#8B0000', 'Oak': '#FFA500', 
+        'Elm': '#32CD32', 'Chery': '#008080', 'Cypress': '#4682B4', 
+        'Ash': '#A52A2A', 'Hardwoods': '#5F9EA0', 'Others': '#EE82EE'
     }
 
     # Helper function to determine species group based on species code

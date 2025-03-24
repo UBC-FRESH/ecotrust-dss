@@ -58,7 +58,7 @@ def buildScenarioBarGraph(harvested_area_x,harvested_area_y,
                   row=1, col=3)
     scenarioBarGraph.update_xaxes(title_text="Growing Stock (m3)", row=1, col=3)
 
-    scenarioBarGraph.update_layout(height=400, width=1800, title_text="Scenarios")
+    # scenarioBarGraph.update_layout(height=400, width=1800, title_text="Scenarios")
     return scenarioBarGraph
 
 
@@ -164,7 +164,7 @@ shapefile_path = './data/shp_files/tsa25.shp/stands.shp'
 # shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
 stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
 stands_org = stands_org.to_crs(epsg=4326)
-abridgedStands = stands_org.head(800)   #.head(10) #only first 10 stands for testing purpose
+abridgedStands = stands_org.head(100)   #.head(10) #only first 10 stands for testing purpose
 # print(abridgedStands)
 print("got stands")
 currentSelectedAreaCood = []
@@ -204,16 +204,16 @@ app.layout =html.Div( [ html.Div([
                 ),
             ]
         ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Period Length")),
-                dbc.Col(dcc.Input(
-                    id="period_length_id", type="number", placeholder="Period Length",
-                    min=1, max=100, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
+        # dbc.Row(
+        #     [
+        #         dbc.Col(html.Div("Period Length")),
+        #         dbc.Col(dcc.Input(
+        #             id="period_length_id", type="number", placeholder="Period Length",
+        #             min=1, max=100, step=1, style={"min-width": "100%"}
+        #         )
+        #         ),
+        #     ]
+        # ),
         # dbc.Row(
         #     [
         #         dbc.Col(html.Div("Max Age")),
@@ -322,28 +322,7 @@ def render_content(tab):
         return html.Div([html.H3('Results not ready')])
 
     print("showing results now")
-    # print('___________________')
-    # print(T_df_plot_12)
-    # print('___________________')
-    # print(T_cbm_output_1)
-    # print('___________________')
-    # print(T_cbm_output_2)
-    # print('___________________')
-    # print(T_forest_type_alt)
-    # print('$$$$$$$$$$')
-    # print(T_forest_type_alt[0]['primary forest'].to_list())
-    # print('___________________')
-    # print(T_df_plot_34)
-    # print('___________________')
-    # print(T_cbm_output_3)
-    print('___________________')
-    # print(T_cbm_output_4)
-    # print('___________________')
-    # print(T_forest_type_base)
-    print('___________________')
-    print("Difference is: ")
-    print(T_emission_difference)
-    print('___________________')
+
     if tab == 'scn-1-graph':
         return html.Div([
             html.H3('Alternative scenario', style={'fontSize': '32px'}),
@@ -519,7 +498,7 @@ resCounterIndex = 0
               [
                   # State('base_year_id', 'value'),
                   State('horizon_id', 'value'),
-                  State('period_length_id', 'value'),
+                  # State('period_length_id', 'value'),
                   # State('max_age_id', 'value'),
                   # State('num_of_steps_id', 'value'),
                   # State('max_harvest_id', 'value'),
@@ -527,7 +506,7 @@ resCounterIndex = 0
                   # State('objective_id', 'value'),
                   Input("analyse_button_id", "n_clicks"),
               ])
-def mycallback(horizon, period_length, n_clicks):#
+def mycallback(horizon, n_clicks):#
 
     msgShow = "none selected"
     global currentSelectedAreaCood
@@ -589,8 +568,6 @@ def mycallback(horizon, period_length, n_clicks):#
                       cs_max,
                       pickle_output_base=False, 
                       pickle_output_alter=False)
-            print("cbm_output_1")
-            print(cbm_output_1)
             T_df_plot_12.append(df_plot_12)
             T_cbm_output_1.append(cbm_output_1)
             T_cbm_output_2.append(cbm_output_2)
@@ -604,17 +581,17 @@ def mycallback(horizon, period_length, n_clicks):#
         print("results ready now")
         global bd1_values
         global cs1_values
-        # bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        # print("tradeoff1 is done")
-        # epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        # global hv2_values
-        # global cs2_values
-        # hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
-        # print("tradeoff2 is done")
-        # global hv3_values
-        # global bd3_values
-        # hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        # print("tradeoff3 is done")
+        bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff1 is done")
+        epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        global hv2_values
+        global cs2_values
+        hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff2 is done")
+        global hv3_values
+        global bd3_values
+        hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff3 is done")
         global resultsReady
         resultsReady = True
         numOfHits = afterDropping.shape[0]

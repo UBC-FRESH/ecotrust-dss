@@ -81,29 +81,7 @@ def drawTradeOffCurve(_X, _Y, xLabel,yLabel):
     tradeOffFig.update_layout(height=400, width=1800, title_text="Tradeoff Curve")
     return tradeOffFig
 
-def multipanelLineGraph(dataFrame1, xLabel, yLabel, title):
-    carbonStockEmissionFig = go.Figure()
-    carbonStockEmissionFig.update_xaxes(title_text=xLabel)
-    carbonStockEmissionFig.update_yaxes(title_text=yLabel)
-    carbonStockEmissionFig.update_layout(title_text=title)
 
-
-    for i in range(1, len(dataFrame1.columns)):
-        col_name = dataFrame1.columns[i]
-        carbonStockEmissionFig.add_trace(go.Scatter(x=dataFrame1.index, y=dataFrame1[col_name], mode='lines', name=col_name))
-    return carbonStockEmissionFig
-
-def netEmissionGraph(dataFrame1, xLabel, yLabel, title):
-    netEmissionFig = go.Figure()
-    netEmissionFig.update_xaxes(title_text=xLabel)
-    netEmissionFig.update_yaxes(title_text=yLabel)
-    netEmissionFig.update_layout(title_text=title)
-
-    netEmissionFig.add_trace(go.Scatter(x=dataFrame1['Year'], y=dataFrame1['Net emission'], mode='lines', name='Net emission'))
-    print("++++++++++++++++++")
-    baseLineDf = pd.DataFrame({'dummy': [0] * dataFrame1.shape[0]})
-    netEmissionFig.add_trace(go.Scatter(x=dataFrame1['Year'], y=baseLineDf['dummy'], mode='lines', showlegend = False, line = dict(color='red', width=2, dash='dash')))
-    return netEmissionFig
 
 ############################################################################
 ######Parameters that will be passed to the backend ########################
@@ -128,7 +106,7 @@ tvy_name = 'totvol'
 max_harvest = 1.0
 case_study = 'ecotrust'
 scenario_names = ['lowest carbon stock', 'business as usual', '40% of highest carbon stock', '60% of highest carbon stock', '20% of highest carbon stock', 'highest carbon stock']
-# scenario_names = ['lowest carbon stock']
+# scenario_names = ['lowest carbon stock', 'business as usual']
 obj_mode = 'max_hv'
 hwp_pool_effect_value = 0
 release_immediately_value = 0
@@ -150,8 +128,6 @@ T_cbm_output_3 = []
 T_cbm_output_4 = []
 T_forest_type_base = []
 T_forest_type_alt = []
-T_emission_difference = []
-resultsReady = False
 ###################
 yld = pd.read_csv('./data/yld.csv')
 yld['AU'] = yld['AU'].astype(int)
@@ -160,12 +136,12 @@ downloadPath = '/home/salar2/project/ecotrust-dss-/outputs/csv/ecotrust/'
 canf = pd.read_csv('data/canfi_species_revised.csv')
 canf = canf[['name','canfi_species']].set_index('name')
 ##################
-shapefile_path = './data/shp_files/tsa01.shp/stands.shp'
-# shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
+#shapefile_path = './data/shp_files/tsa01.shp/stands.shp'
+shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
 stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
-stands_org = stands_org.to_crs(epsg=4326)
-abridgedStands = stands_org.head(10)   #.head(10) #only first 10 stands for testing purpose
-# print(abridgedStands)
+stands_org = stands_org.to_crs(epsg=3005)
+abridgedStands = stands_org   #.head(10) #only first 10 stands for testing purpose
+print(abridgedStands)
 print("got stands")
 currentSelectedAreaCood = []
 
@@ -189,11 +165,6 @@ app.layout =html.Div( [ html.Div([
         #         ),
         #     ]
         # ),
-        dbc.Row(
-            [
-                dbc.Col(html.Label( 'Define the horizon and period length', id="instruction_label_id", style={'width': '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
-            ]
-        ),
         dbc.Row(
             [
                 dbc.Col(html.Div("Horizon")),
@@ -317,11 +288,6 @@ html.Div(children=[
 @callback(Output('tabs-content-example-graph', 'children'),
               Input('tabs-graphs', 'value'))
 def render_content(tab):
-
-    if resultsReady == False:
-        return html.Div([html.H3('Results not ready')])
-
-    print("showing results now")
     # print('___________________')
     # print(T_df_plot_12)
     # print('___________________')
@@ -336,168 +302,94 @@ def render_content(tab):
     # print(T_df_plot_34)
     # print('___________________')
     # print(T_cbm_output_3)
-    print('___________________')
+    # print('___________________')
     # print(T_cbm_output_4)
     # print('___________________')
     # print(T_forest_type_base)
-    print('___________________')
-    print("Difference is: ")
-    print(T_emission_difference)
-    print('___________________')
+    # print('___________________')
     if tab == 'scn-1-graph':
         return html.Div([
-            html.H3('Alternative scenario', style={'fontSize': '32px'}),
+            html.H3('Alternative scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_12[0]['period'].tolist(), T_df_plot_12[0]['oha'].tolist(), T_df_plot_12[0]['period'].tolist(), T_df_plot_12[0]['ohv'].tolist(),T_df_plot_12[0]['period'].tolist(), T_df_plot_12[0]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_alt[0]['period'].tolist(), T_forest_type_alt[0]['primary forest'].tolist(), T_forest_type_alt[0]['secondary forest'].tolist())),
-            html.H3('Business as usual scenario', style={'fontSize': '32px'}),
+            html.H3('Business as usual scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_34[0]['period'].tolist(), T_df_plot_34[0]['oha'].tolist(), T_df_plot_34[0]['period'].tolist(), T_df_plot_34[0]['ohv'].tolist(),T_df_plot_34[0]['period'].tolist(), T_df_plot_34[0]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[0]['period'].tolist(), T_forest_type_base[0]['primary forest'].tolist(), T_forest_type_base[0]['secondary forest'].tolist())),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[0], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)')), width = 2),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[0], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')), width = 2)
-            ]),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[0], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)')), width = 2),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[0], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')), width = 2)
-            ]),
-            html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[0], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            
         ])
     elif tab == 'scn-2-graph':
         return html.Div([
-            html.H3('Alternative scenario', style={'fontSize': '32px'}),
+            html.H3('Alternative scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_12[1]['period'].tolist(), T_df_plot_12[1]['oha'].tolist(), T_df_plot_12[1]['period'].tolist(), T_df_plot_12[1]['ohv'].tolist(),T_df_plot_12[1]['period'].tolist(), T_df_plot_12[1]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_alt[1]['period'].tolist(), T_forest_type_alt[1]['primary forest'].tolist(), T_forest_type_alt[1]['secondary forest'].tolist())),
-            html.H3('Business as usual scenario', style={'fontSize': '32px'}),
+            html.H3('Business as usual scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_34[1]['period'].tolist(), T_df_plot_34[1]['oha'].tolist(), T_df_plot_34[1]['period'].tolist(), T_df_plot_34[1]['ohv'].tolist(),T_df_plot_34[1]['period'].tolist(), T_df_plot_34[1]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[1]['period'].tolist(), T_forest_type_base[1]['primary forest'].tolist(), T_forest_type_base[1]['secondary forest'].tolist())),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[1], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[1], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
-            ]),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[1], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[1], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
-            ]),
-            html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[1], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-3-graph':
         return html.Div([
-            html.H3('Alternative scenario', style={'fontSize': '32px'}),
+            html.H3('Alternative scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_12[2]['period'].tolist(), T_df_plot_12[2]['oha'].tolist(), T_df_plot_12[2]['period'].tolist(), T_df_plot_12[2]['ohv'].tolist(),T_df_plot_12[2]['period'].tolist(), T_df_plot_12[2]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_alt[2]['period'].tolist(), T_forest_type_alt[2]['primary forest'].tolist(), T_forest_type_alt[2]['secondary forest'].tolist())),
-            html.H3('Business as usual scenario', style={'fontSize': '32px'}),
+            html.H3('Business as usual scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_34[2]['period'].tolist(), T_df_plot_34[2]['oha'].tolist(), T_df_plot_34[2]['period'].tolist(), T_df_plot_34[2]['ohv'].tolist(),T_df_plot_34[2]['period'].tolist(), T_df_plot_34[2]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[2]['period'].tolist(), T_forest_type_base[2]['primary forest'].tolist(), T_forest_type_base[2]['secondary forest'].tolist())),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[2], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[2], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
-            ]),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[2], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[2], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
-            ]),
-            html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[2], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-4-graph':
         return html.Div([
-            html.H3('Alternative scenario', style={'fontSize': '32px'}),
+            html.H3('Alternative scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_12[3]['period'].tolist(), T_df_plot_12[3]['oha'].tolist(), T_df_plot_12[3]['period'].tolist(), T_df_plot_12[3]['ohv'].tolist(),T_df_plot_12[3]['period'].tolist(), T_df_plot_12[3]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_alt[3]['period'].tolist(), T_forest_type_alt[3]['primary forest'].tolist(), T_forest_type_alt[3]['secondary forest'].tolist())),
-            html.H3('Business as usual scenario', style={'fontSize': '32px'}),
+            html.H3('Business as usual scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_34[3]['period'].tolist(), T_df_plot_34[3]['oha'].tolist(), T_df_plot_34[3]['period'].tolist(), T_df_plot_34[3]['ohv'].tolist(),T_df_plot_34[3]['period'].tolist(), T_df_plot_34[3]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[3]['period'].tolist(), T_forest_type_base[3]['primary forest'].tolist(), T_forest_type_base[3]['secondary forest'].tolist())),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[3], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[3], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
-            ]),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[3], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[3], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
-            ]),
-            html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[3], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-5-graph':
         return html.Div([
-            html.H3('Alternative scenario', style={'fontSize': '32px'}),
+            html.H3('Alternative scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_12[4]['period'].tolist(), T_df_plot_12[4]['oha'].tolist(), T_df_plot_12[4]['period'].tolist(), T_df_plot_12[4]['ohv'].tolist(),T_df_plot_12[4]['period'].tolist(), T_df_plot_12[4]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_alt[4]['period'].tolist(), T_forest_type_alt[4]['primary forest'].tolist(), T_forest_type_alt[4]['secondary forest'].tolist())),
-            html.H3('Business as usual scenario', style={'fontSize': '32px'}),
+            html.H3('Business as usual scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_34[4]['period'].tolist(), T_df_plot_34[4]['oha'].tolist(), T_df_plot_34[4]['period'].tolist(), T_df_plot_34[4]['ohv'].tolist(),T_df_plot_34[4]['period'].tolist(), T_df_plot_34[4]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[4]['period'].tolist(), T_forest_type_base[4]['primary forest'].tolist(), T_forest_type_base[4]['secondary forest'].tolist())),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[4], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[4], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
-            ]),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[4], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[4], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
-            ]),
-            html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[4], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-6-graph':
         return html.Div([
-            html.H3('Alternative scenario', style={'fontSize': '32px'}),
+            html.H3('Alternative scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_12[5]['period'].tolist(), T_df_plot_12[5]['oha'].tolist(), T_df_plot_12[5]['period'].tolist(), T_df_plot_12[5]['ohv'].tolist(),T_df_plot_12[5]['period'].tolist(), T_df_plot_12[5]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_alt[5]['period'].tolist(), T_forest_type_alt[5]['primary forest'].tolist(), T_forest_type_alt[5]['secondary forest'].tolist())),
-            html.H3('Business as usual scenario', style={'fontSize': '32px'}),
+            html.H3('Business as usual scenario'),
             dcc.Graph( figure= buildScenarioBarGraph(T_df_plot_34[5]['period'].tolist(), T_df_plot_34[5]['oha'].tolist(), T_df_plot_34[5]['period'].tolist(), T_df_plot_34[5]['ohv'].tolist(),T_df_plot_34[5]['period'].tolist(), T_df_plot_34[5]['ogs'].tolist()) ),
-            html.H3('Area primary secondary forest', style={'fontSize': '24px'}),
+            html.H3('Area primary secondary forest'),
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[5]['period'].tolist(), T_forest_type_base[5]['primary forest'].tolist(), T_forest_type_base[5]['secondary forest'].tolist())),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[5], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[5], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
-            ]),
-            dbc.Row(
-            [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[5], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[5], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
-            ]),
-            html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[5], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
         ])
 
     elif tab == 'tdoff-1-graph':
         return html.Div([
-            html.H3('Biodiversity & Carbon stock Tradeoff Curve', style={'fontSize': '24px'}),
+            html.H3('Tradeoff Curve'),
             dcc.Graph(figure=drawTradeOffCurve(cs1_values, bd1_values, "Carbon Stock","Biodiversity"))
             # dcc.Graph(figure=drawTradeOffCurve(tradeoff_x, tradeoff_y, "Carbon Stock","Biodiversity"))
         ])
     elif tab == 'tdoff-2-graph':
         return html.Div([
-            html.H3('Biodiversity & Harvest Volume Tradeoff Curve', style={'fontSize': '24px'}),
+            html.H3('Tradeoff Curve'),
             dcc.Graph(figure=drawTradeOffCurve(cs2_values, hv2_values, "Biodiversity", "Harvested Volume"))
             # dcc.Graph(figure=drawTradeOffCurve(tradeoff_x, tradeoff_y, "Biodiversity", "Harvested Volume"))
         ])
     elif tab == 'tdoff-3-graph':
         return html.Div([
-            html.H3('Carbon Stock & Harvest Volume Tradeoff Curve', style={'fontSize': '24px'}),
+            html.H3('Tradeoff Curve'),
             dcc.Graph(figure=drawTradeOffCurve(bd3_values, hv3_values, "Carbon Stock", "Harvested Volume"))
             # dcc.Graph(figure=drawTradeOffCurve(tradeoff_x, tradeoff_y, "Carbon Stock", "Harvested Volume"))
         ])
@@ -539,7 +431,6 @@ def mycallback(horizon, period_length, n_clicks):#
     global T_cbm_output_4
     global T_forest_type_base
     global T_forest_type_alt
-    global T_emission_difference
     numOfPointsInPoly = len(currentSelectedAreaCood)
     print(currentSelectedAreaCood)
     print(numOfPointsInPoly)
@@ -548,9 +439,8 @@ def mycallback(horizon, period_length, n_clicks):#
     if(numOfPointsInPoly > 2):
         selPoly = Polygon(currentSelectedAreaCood)
         gdf = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[selPoly])
-        sjoin_results = gpd.sjoin(abridgedStands, gdf, how='left', predicate='within')
-        afterDropping = sjoin_results.dropna()
-        afterDropping = afterDropping.to_crs(3005)
+       # sjoin_results = gpd.sjoin(abridgedStands, gdf, how='left', predicate='within')
+        afterDropping = abridgedStands  # sjoin_results.dropna()
         print("num of stands got is")
         print(afterDropping)
         stands = inventory_processing(afterDropping, canf)
@@ -572,7 +462,7 @@ def mycallback(horizon, period_length, n_clicks):#
         print(epsilon)
         for scenario_name in scenario_names:
             print(f"Running for {case_study}_{obj_mode}_{scenario_name}...")
-            df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt, df_plot_34, cbm_output_3, cbm_output_4, forest_type_base, emission_difference = results_scenarios(fm, 
+            df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt, df_plot_34, cbm_output_3, cbm_output_4, forest_type_base = results_scenarios(fm, 
                       clt_percentage, 
                       credibility, 
                       budget_input, 
@@ -588,8 +478,6 @@ def mycallback(horizon, period_length, n_clicks):#
                       cs_max,
                       pickle_output_base=False, 
                       pickle_output_alter=False)
-            print("cbm_output_1")
-            print(cbm_output_1)
             T_df_plot_12.append(df_plot_12)
             T_cbm_output_1.append(cbm_output_1)
             T_cbm_output_2.append(cbm_output_2)
@@ -598,15 +486,10 @@ def mycallback(horizon, period_length, n_clicks):#
             T_cbm_output_3.append(cbm_output_3)
             T_cbm_output_4.append(cbm_output_4)
             T_forest_type_base.append(forest_type_base)
-            T_emission_difference.append(emission_difference)
         print(T_df_plot_12)
         print("opt is done")
-        print(T_cbm_output_1[0])
-        print("results ready now")
-        global resultsReady
         global bd1_values
         global cs1_values
-        resultsReady = True
         # bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
         # print("tradeoff1 is done")
         # epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
@@ -619,7 +502,7 @@ def mycallback(horizon, period_length, n_clicks):#
         # hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
         # print("tradeoff3 is done")
         numOfHits = afterDropping.shape[0]
-        msgShow = "Please switch tabs to update and get the results"
+        msgShow = "selected " + str(numOfHits)
 
     #global resCounterIndex
     #resCounterIndex= resCounterIndex + 1

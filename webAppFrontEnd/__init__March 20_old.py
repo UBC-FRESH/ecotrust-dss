@@ -29,6 +29,57 @@ import shutil
 from IPython.display import display
 import libcbm
 from util import compile_events, cbm_report, compile_scenario_maxstock, plot_scenario_maxstock, run_cbm_emissionstock, run_scenario, plugin_c_curves, plugin_c_curves, cbm_report_both, compare_ws3_cbm, compare_ws3_cbm_both, track_system_stock, track_system_emission, compile_scenario_minemission, plot_scenario_minemission, kpi_age, kpi_species, cmp_c_ss, cmp_c_se, results_scenarios, bootstrap_ogi, compare_kpi_age, epsilon_computer, tradeoff_biodiversity_cs, tradeoff_hv_cs, tradeoff_hv_biodiversity, inventory_processing, curve_points_generator, fm_bootstrapper, carbon_curve_points
+
+
+###########################################################################
+########functions to create various graph objects###########################
+
+
+from plotly.subplots import make_subplots
+import plotly.graph_objs as go
+
+def buildScenarioBarGraph(harvested_area_x,harvested_area_y,
+                  harvested_vol_x, harvested_vol_y,
+                  grow_stock_x, grow_stock_y):
+    scenarioBarGraph = make_subplots(rows=1, cols=3,horizontal_spacing=0.1)
+
+    scenarioBarGraph.add_trace(go.Bar(x=harvested_area_x, y=harvested_area_y, name = "Harvested area (ha)"),
+                  row=1, col=1)
+    scenarioBarGraph.update_xaxes(title_text="Harvested area (ha)", row=1, col=1)
+
+    scenarioBarGraph.add_trace(go.Bar(x=harvested_vol_x, y=harvested_vol_y, name = "Harvested volume (m3)"),
+                  row=1, col=2)
+    scenarioBarGraph.update_xaxes(title_text="Harvested volume (m3)", row=1, col=2)
+
+    scenarioBarGraph.add_trace(go.Bar(x=grow_stock_x, y=grow_stock_y, name = "Growing Stock (m3)"),
+                  row=1, col=3)
+    scenarioBarGraph.update_xaxes(title_text="Growing Stock (m3)", row=1, col=3)
+
+    scenarioBarGraph.update_layout(height=400, width=1800, title_text="Scenarios")
+    return scenarioBarGraph
+
+
+def buildStackedBarGraph(period_x, forest_area_stack1, forest_area_stack2):
+    stackedBarChart = go.Figure(data=[
+        go.Bar(name='Primary forest', x=period_x, y=forest_area_stack1),
+        go.Bar(name='Secondary forest', x=period_x, y=forest_area_stack2)
+    ])
+    stackedBarChart.update_layout(barmode='stack')
+    stackedBarChart.update_xaxes(title_text="Period")
+    stackedBarChart.update_yaxes(title_text="Forest area")
+    return stackedBarChart
+
+def drawTradeOffCurve(_X, _Y, xLabel,yLabel):
+    tradeOffFig = go.Figure()
+    tradeOffFig.add_trace(go.Scatter(x=_X, y=_Y, mode='lines+markers', name='Pareto Front'))
+    tradeOffFig.update_xaxes(title_text=xLabel)
+    tradeOffFig.update_yaxes(title_text=yLabel)
+    tradeOffFig['data'][0]['showlegend'] = True
+    tradeOffFig.update_layout(height=400, width=1800, title_text="Tradeoff Curve")
+    return tradeOffFig
+
+
+
 ############################################################################
 ######Parameters that will be passed to the backend ########################
 print("start")
@@ -59,16 +110,35 @@ displacement_effect = 0
 clt_percentage = 0
 credibility = 0
 budget_input = 10000000
+bd1_values = []
+cs1_values = []
+hv2_values = []
+cs2_values = []
+hv3_values = []
+bd3_values = []
+# df_plot_12 = []
+# cbm_output_1 = []
+# cbm_output_2 = []
+# df_plot_34 = []
+# cbm_output_3 = []
+# cbm_output_4 = []
+T_df_plot_12 = []
+T_cbm_output_1 = []
+T_cbm_output_2 = []
+T_df_plot_34 = []
+T_cbm_output_3 = []
+T_cbm_output_4 = []
 ###################
 yld = pd.read_csv('./data/yld.csv')
 yld['AU'] = yld['AU'].astype(int)
 canf = pd.read_csv('data/canfi_species_revised.csv')
 canf = canf[['name','canfi_species']].set_index('name')
 ##################
-shapefile_path = './data/shp_files/tsa01.shp'
-stands_org = gpd.read_file(shapefile_path, engine = 'pyogrio', use_arrow = True)
-stands_org = stands_org.to_crs(epsg=4326)
-abridgedStands = stands_org.head(10) #only first 10 stands for testing purpose
+#shapefile_path = './data/shp_files/tsa01.shp/stands.shp'
+shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
+stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
+stands_org = stands_org.to_crs(epsg=3005)
+abridgedStands = stands_org   #.head(10) #only first 10 stands for testing purpose
 print(abridgedStands)
 print("got stands")
 currentSelectedAreaCood = []
@@ -83,78 +153,6 @@ server = app.server
 
 app.layout =html.Div( [ html.Div([
     html.Div(children=[
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Base Year")),
-                dbc.Col(dcc.Input(
-                    id="base_year_id", type="number", placeholder="Base Year",
-                    min=1900, max=2999, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Horizon")),
-                dbc.Col(dcc.Input(
-                    id="horizon_id", type="number", placeholder="Horizon",
-                    min=1900, max=2999, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Period Length")),
-                dbc.Col(dcc.Input(
-                    id="period_length_id", type="number", placeholder="Period Length",
-                    min=1, max=100, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Max Age")),
-                dbc.Col(dcc.Input(
-                    id="max_age_id", type="number", placeholder="Max Age",
-                    min=1, max=1000, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Number of Steps")),
-                dbc.Col(dcc.Input(
-                    id="num_of_steps_id", type="number", placeholder="Number of Steps",
-                    min=1, max=10000, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Max Harvest")),
-                dbc.Col(dcc.Input(
-                    id="max_harvest_id", type="number", placeholder="Max Harvest",
-                    min=0, max=100, step=1, style={"min-width": "100%"}
-                )
-                ),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Scenarios")),
-                dbc.Col(dcc.Dropdown( ['Scenario 1', 'Scenario 2', 'Scenario 3','Scenario 4', 'Scenario 5', 'Scenario 6'], 'Scenario 1', clearable=False, id = "scenarios_id", )),
-            ]
-        ),
-        dbc.Row(
-            [
-                dbc.Col(html.Div("Objective")),
-                dbc.Col(dcc.Dropdown(['Objective 1', 'Objective 2', 'Objective 3','Objective 4'], 'Objective 1',clearable=False, id = "objective_id", )),
-            ]
-        ),
         dbc.Row(
             [
                 dbc.Col( dcc.Upload(html.Button('Upload Area of Interest', id = "upload_area_button_id", style = {'width' : '100%'}), id='upload-data'), width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -206,56 +204,37 @@ html.Div(children=[
 @callback(Output('tabs-content-example-graph', 'children'),
               Input('tabs-graphs', 'value'))
 def render_content(tab):
-
-    #######################scenario bar graphs#############################################
-    #first dummy data set for first set of bar graphs
-    barGraphX = [1,2,3,4,5,6,7,8,9,10]
-    barGraphY = [600,550,600,500,600,550,600,500,600,500]
-    scenarioBarGraph = make_subplots(rows=1, cols=3,horizontal_spacing=0.1)
-    scenarioBarGraph.add_trace(go.Bar(x=barGraphX, y=barGraphY, name = "Harvested area (ha)"),
-                  row=1, col=1)
-    scenarioBarGraph.update_xaxes(title_text="Harvested area (ha)", row=1, col=1)
-    scenarioBarGraph.add_trace(go.Bar(x=barGraphX, y=barGraphY, name = "Harvested volume (m3)"),
-                  row=1, col=2)
-    scenarioBarGraph.update_xaxes(title_text="Harvested volume (m3)", row=1, col=2)
-    scenarioBarGraph.add_trace(go.Bar(x=barGraphX, y=barGraphY, name = "Growing Stock (m3)"),
-                  row=1, col=3)
-    scenarioBarGraph.update_xaxes(title_text="Growing Stock (m3)", row=1, col=3)
-    scenarioBarGraph.update_layout(height=400, width=1800, title_text="Scenarios")
-    #######################stacked bar graphs#############################################
-    stackedBarGraphY1 = [20000,19000,18000,17000,16000,15000,14000,13000,12000,11000]
-    stackedBarGraphY2 = [1000,2000,3000,4000,5000,6000,7000,8000,9000,10000]
-
-    stackedBarChart = go.Figure(data=[
-        go.Bar(name='Primary forest', x=barGraphX, y=stackedBarGraphY1),
-        go.Bar(name='Secondary forest', x=barGraphX, y=stackedBarGraphY2)
-    ])
-    stackedBarChart.update_layout(barmode='stack')
-    stackedBarChart.update_xaxes(title_text="Period")
-    stackedBarChart.update_yaxes(title_text="Forest area")
-    #######################line graphs#############################################
-
-
     if tab == 'scn-1-graph':
         return html.Div([
             html.H3('Scenarios'),
-            dcc.Graph( figure= scenarioBarGraph),
+            # dcc.Graph( figure= buildScenarioBarGraph(barGraphX, barGraphY, barGraphX, barGraphY,barGraphX, barGraphY) ),
             html.H3('Area primary secondary forest'),
-            dcc.Graph(figure=stackedBarChart)
+            # dcc.Graph(figure=buildStackedBarGraph(barGraphX, stackedBarGraphY1, stackedBarGraphY2))
         ])
     elif tab == 'scn-2-graph':
         return html.Div([
-            html.H3('Tab content 2'),
-            dcc.Graph(
-                id='graph-2-tabs-dcc',
-                figure={
-                    'data': [{
-                        'x': [1, 2, 3],
-                        'y': [5, 10, 6],
-                        'type': 'bar'
-                    }]
-                }
-            )
+            html.H3('Scenarios'),
+            # dcc.Graph(figure=buildScenarioBarGraph(barGraphX, barGraphY, barGraphX, barGraphY, barGraphX, barGraphY)),
+            html.H3('Area primary secondary forest'),
+            # dcc.Graph(figure=buildStackedBarGraph(barGraphX, stackedBarGraphY1, stackedBarGraphY2))
+        ])
+    elif tab == 'tdoff-1-graph':
+        return html.Div([
+            html.H3('Tradeoff Curve'),
+            dcc.Graph(figure=drawTradeOffCurve(cs1_values, bd1_values, "Carbon Stock","Biodiversity"))
+            # dcc.Graph(figure=drawTradeOffCurve(tradeoff_x, tradeoff_y, "Carbon Stock","Biodiversity"))
+        ])
+    elif tab == 'tdoff-2-graph':
+        return html.Div([
+            html.H3('Tradeoff Curve'),
+            dcc.Graph(figure=drawTradeOffCurve(cs2_values, hv2_values, "Biodiversity", "Harvested Volume"))
+            # dcc.Graph(figure=drawTradeOffCurve(tradeoff_x, tradeoff_y, "Biodiversity", "Harvested Volume"))
+        ])
+    elif tab == 'tdoff-3-graph':
+        return html.Div([
+            html.H3('Tradeoff Curve'),
+            dcc.Graph(figure=drawTradeOffCurve(bd3_values, hv3_values, "Carbon Stock", "Harvested Volume"))
+            # dcc.Graph(figure=drawTradeOffCurve(tradeoff_x, tradeoff_y, "Carbon Stock", "Harvested Volume"))
         ])
 
 
@@ -275,18 +254,24 @@ resCounterIndex = 0
                   Input("analyse_button_id", "n_clicks"),
               ])
 def mycallback(base_year, horizon, period_length, max_Age, num_of_steps, max_harvest, scenario, objective, n_clicks):#
-    print(base_year)
-    print(horizon)
-    print(period_length)
-    print(max_Age)
-    print(num_of_steps)
-    print(max_harvest)
-    print(scenario)
-    print(objective)
-    print(n_clicks)
+    #print(base_year)
+    #print(horizon)
+    #print(period_length)
+    #print(max_Age)
+    #print(num_of_steps)
+    #print(max_harvest)
+    #print(scenario)
+    #print(objective)
+    #print(n_clicks)
 
     msgShow = "none selected"
     global currentSelectedAreaCood
+    global T_df_plot_12
+    global T_cbm_output_1
+    global T_cbm_output_2
+    global T_df_plot_34
+    global T_cbm_output_3
+    global T_cbm_output_4
     numOfPointsInPoly = len(currentSelectedAreaCood)
     print(currentSelectedAreaCood)
     print(numOfPointsInPoly)
@@ -318,7 +303,7 @@ def mycallback(base_year, horizon, period_length, max_Age, num_of_steps, max_har
         print(epsilon)
         for scenario_name in scenario_names:
             print(f"Running for {case_study}_{obj_mode}_{scenario_name}...")
-            results_scenarios(fm, 
+            df_plot_12, cbm_output_1, cbm_output_2, df_plot_34, cbm_output_3, cbm_output_4 = results_scenarios(fm, 
                       clt_percentage, 
                       credibility, 
                       budget_input, 
@@ -334,7 +319,27 @@ def mycallback(base_year, horizon, period_length, max_Age, num_of_steps, max_har
                       cs_max,
                       pickle_output_base=False, 
                       pickle_output_alter=False)
+            T_df_plot_12.append(df_plot_12)
+            T_cbm_output_1.append(cbm_output_1)
+            T_cbm_output_2.append(cbm_output_2)
+            T_df_plot_34.append(df_plot_34)
+            T_cbm_output_3.append(cbm_output_3)
+            T_cbm_output_4.append(cbm_output_4)          
         print("opt is done")
+        print(T_df_plot_12)
+        global bd1_values
+        global cs1_values
+        bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff1 is done")
+        epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        global hv2_values
+        global cs2_values
+        hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff2 is done")
+        global hv3_values
+        global bd3_values
+        hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff3 is done")
         numOfHits = afterDropping.shape[0]
         msgShow = "selected " + str(numOfHits)
 

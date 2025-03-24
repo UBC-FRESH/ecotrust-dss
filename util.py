@@ -9,6 +9,7 @@ import os
 import ws3.opt
 import pickle
 import numpy as np
+from datetime import datetime
 from math import pi
 
 def inventory_processing(stands_org, canf):
@@ -459,16 +460,17 @@ def forest_type_indicator(fm, case_study, obj_mode, scenario_name):
            }
     df = pd.DataFrame(data)
     # Plotting the stacked bar graph
-    plt.bar(df['period'], df['primary forest'], label='Primary Forest')
-    plt.bar(df['period'], df['secondary forest'], bottom=df['primary forest'], label='Secondary Forest')
+    # plt.bar(df['period'], df['primary forest'], label='Primary Forest')
+    # plt.bar(df['period'], df['secondary forest'], bottom=df['primary forest'], label='Secondary Forest')
     
-    # Adding labels and title
-    plt.xlabel('Period')
-    plt.ylabel('Forest area')
-    plt.title('Area of primary and secondary forests')
-    plt.legend()    
-    # Show the plot
-    plt.show()
+    # # Adding labels and title
+    # plt.xlabel('Period')
+    # plt.ylabel('Forest area')
+    # plt.title('Area of primary and secondary forests')
+    # plt.legend()    
+    # # Show the plot
+    # plt.show()
+    return df
 
 
 ################################################
@@ -632,11 +634,11 @@ def compile_scenario(fm, case_study, obj_mode, scenario_name):
             'ohv':ohv, 
             'ogs':ogs}
     df = pd.DataFrame(data)
-
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_folder_path = os.path.join('./outputs/csv', case_study)
     if not os.path.exists(csv_folder_path):
         os.makedirs(csv_folder_path)    
-    csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario.csv')
+    csv_file_path = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_compile_scenario.csv')
     df.to_csv(csv_file_path, index=False)    
     return df
 
@@ -692,10 +694,11 @@ def compile_scenario_maxstock(fm, case_study, obj_mode, scenario_name):
             'ocp':ocp,
             'ocf':ocf}
     df = pd.DataFrame(data)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_folder_path = os.path.join('./outputs/csv', case_study)
     if not os.path.exists(csv_folder_path):
         os.makedirs(csv_folder_path)    
-    csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_maxstock.csv')
+    csv_file_path = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_compile_scenario_maxstock.csv')
     df.to_csv(csv_file_path, index=False)   
     return df
 
@@ -756,12 +759,12 @@ def compile_scenario_minemission(fm, case_study, obj_mode, scenario_name):
             'ocp':ocp,
             'ocf':ocf}
     df = pd.DataFrame(data)
-
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_folder_path = os.path.join('./outputs/csv', case_study)
     if not os.path.exists(csv_folder_path):
         os.makedirs(csv_folder_path)
     
-    csv_file_path = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_compile_scenario_minemission.csv')
+    csv_file_path = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_compile_scenario_minemission.csv')
     df.to_csv(csv_file_path, index=False)
     return df
 
@@ -1146,8 +1149,8 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
     # cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-    cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+    cgen_gs_min_stock = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_cs_min_stock = {'lb':{len(fm.periods): -9999999999999999999}, 'ub':{len(fm.periods): 9999999999999999999}}
 
     p_min_stock = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
@@ -1170,7 +1173,8 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     # breakpoint()
     lhs_values = p_min_stock.get_all_constraints_lhs_values()
     # print(lhs_values)
-    cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    # cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    cs_min = lhs_values['gen-ub_%03d_cgen_cs' % len(fm.periods)] ## should be checked
 
 
     epsilon = (cs_max - cs_min)/n
@@ -1228,8 +1232,8 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
     cflw_ha_min_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_stock = ({p:0.05 for p in fm.periods}, 1)
     # cgen_hv_min_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_min_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-    cgen_cs_min_stock = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+    cgen_gs_min_stock = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_cs_min_stock = {'lb':{len(fm.periods): -9999999999999999999}, 'ub':{len(fm.periods): 9999999999999999999}}
 
     p_min_stock = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
@@ -1252,7 +1256,8 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
     # breakpoint()
     lhs_values = p_min_stock.get_all_constraints_lhs_values()
     # print(lhs_values)
-    cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    # cs_min = lhs_values['gen-ub_010_cgen_cs'] ## should be checked
+    cs_min = lhs_values['gen-ub_%03d_cgen_cs' % len(fm.periods)] ## should be checked
     epsilon = (cs_max - cs_min)/n
     bd_values = []
     cs_values = []
@@ -1268,9 +1273,9 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
-        cgen_cs = {'lb':{10: 0}, 'ub':{10: cs_min + i * epsilon}}
+        cgen_cs = {'lb':{len(fm.periods): 0}, 'ub':{len(fm.periods): cs_min + i * epsilon}}
 
         p = gen_scenario(fm=fm, 
                          clt_percentage=clt_percentage,
@@ -1291,7 +1296,8 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
         p.solve()
         obj_val = p.z()
         lhs_values = p.get_all_constraints_lhs_values()
-        cs_val = lhs_values['gen-ub_010_cgen_cs']
+        # cs_val = lhs_values['gen-ub_010_cgen_cs']
+        cs_val = lhs_values['gen-ub_%03d_cgen_cs' % len(fm.periods)]
         bd_values.append(obj_val)
         cs_values.append(cs_val)
 
@@ -1330,9 +1336,13 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
         # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
-        cgen_cs = {'lb':{10: cs_max-i*epsilon}, 'ub':{10: cs_max}}
+        # cgen_cs = {'lb':{10: cs_max-i*epsilon}, 'ub':{10: cs_max}}
+        if i == 0:
+            cgen_cs = {'lb':{len(fm.periods): 0.99 * cs_max}, 'ub':{len(fm.periods): cs_max}}
+        else:
+            cgen_cs = {'lb':{len(fm.periods): cs_max-i*epsilon}, 'ub':{len(fm.periods): cs_max}}
 
         p = gen_scenario(fm=fm, 
                          clt_percentage=clt_percentage,
@@ -1353,7 +1363,8 @@ def tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effec
         p.solve()
         obj_val = p.z()
         lhs_values = p.get_all_constraints_lhs_values()
-        cs_val = lhs_values['gen-ub_010_cgen_cs']
+        # cs_val = lhs_values['gen-ub_010_cgen_cs']
+        cs_val = lhs_values['gen-ub_%03d_cgen_cs' % len(fm.periods)]
         hv_values.append(obj_val)
         cs_values.append(cs_val)
 
@@ -1422,8 +1433,8 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
     cflw_ha_min_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_min_bd = ({p:0.05 for p in fm.periods}, 1)
     # cgen_hv_min_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_min_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-    cgen_bd_min_bd = {'lb':{10: -9999999999999999999}, 'ub':{10: 9999999999999999999}}
+    cgen_gs_min_bd = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_bd_min_bd = {'lb':{len(fm.periods): -9999999999999999999}, 'ub':{len(fm.periods): 9999999999999999999}}
 
     p_min_bd = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
@@ -1446,7 +1457,8 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
     # breakpoint()
     lhs_values = p_min_bd.get_all_constraints_lhs_values()
     # print(lhs_values)
-    bd_min = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
+    # bd_min = lhs_values['gen-ub_010_cgen_bd'] ## should be checked
+    bd_min = lhs_values['gen-ub_%03d_cgen_bd' % len(fm.periods)] ## should be checked
     epsilon = (bd_max - bd_min)/n
 
     hv_values = []
@@ -1465,8 +1477,10 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
         cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        # cgen_cs = {'lb':{10: cs_max- i * epsilon}, 'ub':{10: cs_max}}
-        cgen_bd = {'lb':{10:  bd_max - i * epsilon}, 'ub':{10: bd_max}}
+        if i == 0:
+            cgen_bd = {'lb':{len(fm.periods):  0.99 * bd_max}, 'ub':{len(fm.periods): bd_max}}
+        else:
+            cgen_bd = {'lb':{len(fm.periods):  bd_max - i * epsilon}, 'ub':{len(fm.periods): bd_max}}
 
         p = gen_scenario(fm=fm, 
                          clt_percentage=clt_percentage,
@@ -1487,7 +1501,8 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         p.solve()
         obj_val = p.z()
         lhs_values = p.get_all_constraints_lhs_values()
-        bd_val = lhs_values['gen-ub_010_cgen_bd']
+        # bd_val = lhs_values['gen-ub_010_cgen_bd']
+        bd_val = lhs_values['gen-ub_%03d_cgen_bd' % len(fm.periods)]
         hv_values.append(obj_val)
         bd_values.append(bd_val)
 
@@ -1532,43 +1547,43 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max-10*epsilon}, 'ub':{10: cs_max}}
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{len(fm.periods): cs_max-10*epsilon}, 'ub':{len(fm.periods): cs_max}}
     elif scenario_name == 'business as usual':
         print('running business as usual scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max - 8 * epsilon}, 'ub':{10: cs_max}}
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{len(fm.periods): cs_max - 8 * epsilon}, 'ub':{len(fm.periods): cs_max}}
     elif scenario_name == '40% of highest carbon stock':
         print('running 40% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max-6*epsilon}, 'ub':{10: cs_max}}
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{len(fm.periods): cs_max-6*epsilon}, 'ub':{len(fm.periods): cs_max}}
     elif scenario_name == '60% of highest carbon stock':
         print('running 60% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max-4*epsilon}, 'ub':{10: cs_max}}
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{len(fm.periods): cs_max-4*epsilon}, 'ub':{len(fm.periods): cs_max}}
     elif scenario_name == '20% of highest carbon stock':
         print('running 20% of highest carbon stock scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max-2*epsilon}, 'ub':{10: cs_max}}
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{len(fm.periods): cs_max-2*epsilon}, 'ub':{len(fm.periods): cs_max}}
     elif scenario_name == 'highest carbon stock':
         print('running highest carbon scenario')
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
-        cgen_cs = {'lb':{10: cs_max}, 'ub':{10: cs_max}} 
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_cs = {'lb':{len(fm.periods): 0.99 * cs_max}, 'ub':{len(fm.periods): cs_max}} 
     else:
         assert False # bad scenario name
     
@@ -1613,11 +1628,11 @@ def run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect,
         # plot_scenario_minemission(df, case_study, obj_mode, scenario_name)
     else:
         raise ValueError('Invalid obj_mode: %s' % obj_mode) 
-    # forest_type = forest_type_indicator(fm, case_study, obj_mode, scenario_name)    
+    forest_type = forest_type_indicator(fm, case_study, obj_mode, scenario_name)    
     # print("------------------------------------------------")
     # kpi_socioeconomic(fm)
     # print("------------------------------------------------")
-    return sch, df
+    return sch, df, forest_type
     
 ##############################################################
 # Implement a simple function to run CBM from ws3 export data
@@ -1771,7 +1786,7 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
     concrete_density = 2400 #kg/m3
     co2_concrete_landfill_factor = 0.00517 * concrete_density
     # sch_alt_scenario = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name, solver='gurobi')
-    sch_alt_scenario, df_plot = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name) #This uses pulp
+    sch_alt_scenario, df_plot, forest_type = run_scenario(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, case_study, obj_mode, epsilon, cs_max, scenario_name) #This uses pulp
 
     # df = compile_scenario(fm, case_study, obj_mode, scenario_name)
     # plot_scenario(df, case_study, obj_mode, scenario_name)
@@ -1791,7 +1806,7 @@ def stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_ste
                                        eco_boundary='Montane Cordillera',
                                        disturbance_type_mapping=disturbance_type_mapping)
     cbm_output_1, cbm_output_2 = run_cbm(df_carbon_stock, df_carbon_emission,  df_carbon_emission_immed, df_emission_concrete_manu, df_emission_concrete_landfill, sit_config, sit_tables, n_steps, release_immediately_value, plot = False)
-    return df_plot, cbm_output_1, cbm_output_2    
+    return df_plot, cbm_output_1, cbm_output_2, forest_type    
 
 def stock_emission_scenario_equivalent(fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode):   
     decay_rates = {'plumber':math.log(2.)/35., 'ppaper':math.log(2.)/2.}
@@ -1862,23 +1877,23 @@ def scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, 
     cbm_output_2.reset_index(drop=False, inplace=True)
     dif_scenario = pd.DataFrame({"Year": cbm_output_2["Year"],
                        "Net emission": cbm_output_2['Net emission'] - cbm_output_4['Net emission']})
-    ax = dif_scenario.groupby('Year').sum().plot(xlim = (0, n_steps))
-    ax.axhline(y=0, color='red', linestyle='--')
-    ax.set_title('Net emission difference between base and alternative scenarios')
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Net Carbon emission diffrence')   
-    dollar_per_ton = abs(budget_input / dif_scenario.iloc[:25]['Net emission'].sum()) # Calculate for the next 25 years
+    # ax = dif_scenario.groupby('Year').sum().plot(xlim = (0, n_steps))
+    # ax.axhline(y=0, color='red', linestyle='--')
+    # ax.set_title('Net emission difference between base and alternative scenarios')
+    # ax.set_xlabel('Year')
+    # ax.set_ylabel('Net Carbon emission diffrence')   
+    # dollar_per_ton = abs(budget_input / dif_scenario.iloc[:25]['Net emission'].sum()) # Calculate for the next 25 years
     # print( "Net emission difference", dif_scenario.iloc[:25]['Net emission'].sum())
     # print( "Net emission base scenario", cbm_output_4.iloc[:25]['Net emission'].sum())
     # print( "Net emission alternative scenario", cbm_output_2.iloc[:25]['Net emission'].sum())    
 
     # dollar_per_ton = abs(budget_input / dif_scenario['Net emission'].sum()) # Calculate for the next 25 years
-    print( "Net emission difference", dif_scenario['Net emission'].sum())
-    print( "Net emission base scenario", cbm_output_4['Net emission'].sum())
-    print( "Net emission alternative scenario", cbm_output_2['Net emission'].sum()) 
-    print('dollar_per_ton is: ', dollar_per_ton)
+    # print( "Net emission difference", dif_scenario['Net emission'].sum())
+    # print( "Net emission base scenario", cbm_output_4['Net emission'].sum())
+    # print( "Net emission alternative scenario", cbm_output_2['Net emission'].sum()) 
+    # print('dollar_per_ton is: ', dollar_per_ton)
     plt.savefig(output_file_path)
-    return ax
+    return dif_scenario
 
 def compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode, show_graph=False):
     import os  
@@ -2011,7 +2026,7 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
             cbm_output_2 = pickle.load(f)
         print("Loaded cbm_output_1 and cbm_output_2 from pickle files.")
     else:
-        df_plot_12, cbm_output_1, cbm_output_2 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
+        df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
         with open(pickle_file_1, 'wb') as f:
             pickle.dump(cbm_output_1, f)
         with open(pickle_file_2, 'wb') as f:
@@ -2021,18 +2036,18 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
     # kpi_age_alt = kpi_age(fm, case_study, obj_mode, scenario_name)
     # portion_10_alt , shannon_10_alt = kpi_species(fm, case_study, obj_mode, scenario_name)
     # kpi_socio_alt, kpi_eco_alt = kpi_socioeconomic(fm)
-
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Create a folder for csv file outputs
     csv_folder_path = os.path.join('./outputs/csv', case_study)
     if not os.path.exists(csv_folder_path):
         os.makedirs(csv_folder_path)
     # Save cbm_output_2 as CSV
     cbm_output_2_df = pd.DataFrame(cbm_output_2)
-    cbm_output_2_file = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_cbm_output_2.csv')
+    cbm_output_2_file = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_cbm_output_2.csv')
     cbm_output_2_df.to_csv(cbm_output_2_file, index=False)
     # print(cbm_output_2)
     cbm_output_1_df = pd.DataFrame(cbm_output_1)
-    cbm_output_1_file = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_cbm_output_1.csv')
+    cbm_output_1_file = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_cbm_output_1.csv')
     cbm_output_1_df.to_csv(cbm_output_1_file, index=False)
 
     fm.reset()
@@ -2059,7 +2074,7 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
         else:
             raise ValueError('Invalid case_study: %s' % case_study)
 
-        df_plot_34, cbm_output_3, cbm_output_4 = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
+        df_plot_34, cbm_output_3, cbm_output_4, forest_type_base = stock_emission_scenario(fm, clt_percentage, credibility, budget_input, n_steps, scenario_name, displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study, obj_mode, epsilon, cs_max)
         
         # Save cbm_output_3 and cbm_output_4 as pickle
         with open(pickle_file_3, 'wb') as f:
@@ -2071,14 +2086,14 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
     # kpi_age_base = kpi_age(fm, case_study, obj_mode, scenario_name)
     # portion_10_base , shannon_10_base = kpi_species(fm, case_study, obj_mode, scenario_name)
     # kpi_socio_base, kpi_eco_base = kpi_socioeconomic(fm)
-
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Save cbm_output_4 as CSV
     cbm_output_4_df = pd.DataFrame(cbm_output_4)
-    cbm_output_4_file = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_cbm_output_4.csv')
+    cbm_output_4_file = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_cbm_output_4.csv')
     cbm_output_4_df.to_csv(cbm_output_4_file, index=False)
     # print(cbm_output_4)
     cbm_output_3_df = pd.DataFrame(cbm_output_3)
-    cbm_output_3_file = os.path.join(csv_folder_path, f'{case_study}_{obj_mode}_{scenario_name}_cbm_output_3.csv')
+    cbm_output_3_file = os.path.join(csv_folder_path, f'{scenario_name}_{timestamp}_cbm_output_3.csv')
     cbm_output_3_df.to_csv(cbm_output_3_file, index=False)
 
     # Plot scenarios
@@ -2086,7 +2101,7 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
     
     # Scenario difference plot
     print("---------------------------------------------------------------------------------------")    
-    # dif_plot = scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, obj_mode)
+    emission_difference = scenario_dif(cbm_output_2, cbm_output_4, budget_input, n_steps, case_study, obj_mode)
 
     # compare_kpi_age(kpi_age_base, kpi_age_alt, case_study, obj_mode)
 
@@ -2094,7 +2109,7 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
 
     # compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_eco_base)
     print("---------------------------------------------------------------------------------------")
-    return df_plot_12, cbm_output_1, cbm_output_2, df_plot_34, cbm_output_3, cbm_output_4
+    return df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt, df_plot_34, cbm_output_3, cbm_output_4, forest_type_base, emission_difference 
 
 def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
     # Add carbon pools indicators 

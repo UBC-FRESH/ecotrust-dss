@@ -108,14 +108,6 @@ def netEmissionGraph(dataFrame1, xLabel, yLabel, title):
 ############################################################################
 ######Parameters that will be passed to the backend ########################
 print("start")
-base_year_val = 0
-horizon_val = 0
-period_length_val = 0
-max_age_val = 0
-num_of_steps_val = 0
-max_harvest_val = 0
-scenario_val = "Scenario 1"
-objective_val = "Objective 1"
 json_object_val = None
 ###########
 # Initialize the input parameters
@@ -179,16 +171,7 @@ server = app.server
 
 app.layout =html.Div( [ html.Div([
     html.Div(children=[
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Base Year")),
-        #         dbc.Col(dcc.Input(
-        #             id="base_year_id", type="number", placeholder="Base Year",
-        #             min=1900, max=2999, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
+
         dbc.Row(
             [
                 dbc.Col(html.Label( 'Define the horizon and period length', id="instruction_label_id", style={'width': '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -214,48 +197,7 @@ app.layout =html.Div( [ html.Div([
                 ),
             ]
         ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Max Age")),
-        #         dbc.Col(dcc.Input(
-        #             id="max_age_id", type="number", placeholder="Max Age",
-        #             min=1, max=1000, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Number of Steps")),
-        #         dbc.Col(dcc.Input(
-        #             id="num_of_steps_id", type="number", placeholder="Number of Steps",
-        #             min=1, max=10000, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Max Harvest")),
-        #         dbc.Col(dcc.Input(
-        #             id="max_harvest_id", type="number", placeholder="Max Harvest",
-        #             min=0, max=100, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Scenarios")),
-        #         dbc.Col(dcc.Dropdown( ['Scenario 1', 'Scenario 2', 'Scenario 3','Scenario 4', 'Scenario 5', 'Scenario 6'], 'Scenario 1', clearable=False, id = "scenarios_id", )),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Objective")),
-        #         dbc.Col(dcc.Dropdown(['Objective 1', 'Objective 2', 'Objective 3','Objective 4'], 'Objective 1',clearable=False, id = "objective_id", )),
-        #     ]
-        # ),
+
         dbc.Row(
             [
                 dbc.Col( dcc.Upload(html.Button('Upload Area of Interest', id = "upload_area_button_id", style = {'width' : '100%'}), id='upload-data'), width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -322,28 +264,6 @@ def render_content(tab):
         return html.Div([html.H3('Results not ready')])
 
     print("showing results now")
-    # print('___________________')
-    # print(T_df_plot_12)
-    # print('___________________')
-    # print(T_cbm_output_1)
-    # print('___________________')
-    # print(T_cbm_output_2)
-    # print('___________________')
-    # print(T_forest_type_alt)
-    # print('$$$$$$$$$$')
-    # print(T_forest_type_alt[0]['primary forest'].to_list())
-    # print('___________________')
-    # print(T_df_plot_34)
-    # print('___________________')
-    # print(T_cbm_output_3)
-    print('___________________')
-    # print(T_cbm_output_4)
-    # print('___________________')
-    # print(T_forest_type_base)
-    print('___________________')
-    print("Difference is: ")
-    print(T_emission_difference)
-    print('___________________')
     if tab == 'scn-1-graph':
         return html.Div([
             html.H3('Alternative scenario', style={'fontSize': '32px'}),
@@ -551,15 +471,11 @@ def mycallback(horizon, period_length, n_clicks):#
         sjoin_results = gpd.sjoin(abridgedStands, gdf, how='left', predicate='within')
         afterDropping = sjoin_results.dropna()
         afterDropping = afterDropping.to_crs(3005)
-        print("num of stands got is")
-        print(afterDropping)
         stands = inventory_processing(afterDropping, canf)
         print(stands)
         print("stands got")
         curve_points_table = curve_points_generator(stands, yld, canf)
-        print(curve_points_table)
         print("curve points table got")
-        print(horizonn)
         fm = fm_bootstrapper(base_yearr, horizonn, period_lengthh, max_agee, stands, curve_points_table, tvy_name)
         print("fm is created")
         c_curves_p, c_curves_f = carbon_curve_points(fm)
@@ -588,8 +504,6 @@ def mycallback(horizon, period_length, n_clicks):#
                       cs_max,
                       pickle_output_base=False, 
                       pickle_output_alter=False)
-            print("cbm_output_1")
-            print(cbm_output_1)
             T_df_plot_12.append(df_plot_12)
             T_cbm_output_1.append(cbm_output_1)
             T_cbm_output_2.append(cbm_output_2)
@@ -599,25 +513,23 @@ def mycallback(horizon, period_length, n_clicks):#
             T_cbm_output_4.append(cbm_output_4)
             T_forest_type_base.append(forest_type_base)
             T_emission_difference.append(emission_difference)
-        print(T_df_plot_12)
         print("opt is done")
-        print(T_cbm_output_1[0])
         print("results ready now")
         global resultsReady
         global bd1_values
         global cs1_values
         resultsReady = True
-        # bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        # print("tradeoff1 is done")
-        # epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        # global hv2_values
-        # global cs2_values
-        # hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
-        # print("tradeoff2 is done")
-        # global hv3_values
-        # global bd3_values
-        # hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        # print("tradeoff3 is done")
+        bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff1 is done")
+        epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        global hv2_values
+        global cs2_values
+        hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff2 is done")
+        global hv3_values
+        global bd3_values
+        hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
+        print("tradeoff3 is done")
         numOfHits = afterDropping.shape[0]
         msgShow = "Please switch tabs to update and get the results"
 

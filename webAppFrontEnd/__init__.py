@@ -69,7 +69,7 @@ def buildStackedBarGraph(period_x, forest_area_stack1, forest_area_stack2):
     ])
     stackedBarChart.update_layout(barmode='stack')
     stackedBarChart.update_xaxes(title_text="Period")
-    stackedBarChart.update_yaxes(title_text="Forest area")
+    stackedBarChart.update_yaxes(title_text="Forest area (ha)")
     return stackedBarChart
 
 def drawTradeOffCurve(_X, _Y, xLabel,yLabel):
@@ -160,13 +160,13 @@ downloadPath = '/home/salar2/project/ecotrust-dss-/outputs/csv/ecotrust/'
 canf = pd.read_csv('data/canfi_species_revised.csv')
 canf = canf[['name','canfi_species']].set_index('name')
 ##################
-shapefile_path = './data/shp_files/tsa25.shp/stands.shp'
+shapefile_path = './data/shp_files/tsa08.shp/stands.shp'
 # shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
 stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
 stands_org = stands_org.to_crs(epsg=4326)
 abridgedStands = stands_org.head(100)   #.head(10) #only first 10 stands for testing purpose
-# print(abridgedStands)
-print("got stands")
+print(abridgedStands)
+print("abridgedStands")
 currentSelectedAreaCood = []
 
 ############################################################################
@@ -191,7 +191,7 @@ app.layout =html.Div( [ html.Div([
         # ),
         dbc.Row(
             [
-                dbc.Col(html.Label( 'Define the horizon and period length', id="instruction_label_id", style={'width': '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
+                dbc.Col(html.Label( 'Define the planning horizon', id="instruction_label_id", style={'width': '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
             ]
         ),
         dbc.Row(
@@ -335,16 +335,16 @@ def render_content(tab):
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[0]['period'].tolist(), T_forest_type_base[0]['primary forest'].tolist(), T_forest_type_base[0]['secondary forest'].tolist())),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[0], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)')), width = 2),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[0], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')), width = 2)
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[0], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (alternative scenario)')), width = 2),
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[0], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (base scenario)')), width = 2)
             ]),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[0], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)')), width = 2),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[0], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')), width = 2)
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[0], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (alternative scenario)')), width = 2),
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[0], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (base scenario)')), width = 2)
             ]),
             html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[0], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            dcc.Graph( figure= netEmissionGraph(T_emission_difference[0], 'Year', 'Net carbon emission difference (Ton)', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-2-graph':
         return html.Div([
@@ -358,16 +358,16 @@ def render_content(tab):
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[1]['period'].tolist(), T_forest_type_base[1]['primary forest'].tolist(), T_forest_type_base[1]['secondary forest'].tolist())),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[1], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[1], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[1], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[1], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (base scenario)')))
             ]),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[1], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[1], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[1], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[1], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (base scenario)')))
             ]),
             html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[1], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            dcc.Graph( figure= netEmissionGraph(T_emission_difference[1], 'Year', 'Net carbon emission difference (Ton)', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-3-graph':
         return html.Div([
@@ -381,16 +381,16 @@ def render_content(tab):
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[2]['period'].tolist(), T_forest_type_base[2]['primary forest'].tolist(), T_forest_type_base[2]['secondary forest'].tolist())),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[2], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[2], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[2], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[2], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (base scenario)')))
             ]),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[2], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[2], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[2], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[2], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (base scenario)')))
             ]),
             html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[2], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            dcc.Graph( figure= netEmissionGraph(T_emission_difference[2], 'Year', 'Net carbon emission difference (Ton)', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-4-graph':
         return html.Div([
@@ -404,16 +404,16 @@ def render_content(tab):
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[3]['period'].tolist(), T_forest_type_base[3]['primary forest'].tolist(), T_forest_type_base[3]['secondary forest'].tolist())),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[3], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[3], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[3], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[3], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (base scenario)')))
             ]),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[3], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[3], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[3], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[3], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (base scenario)')))
             ]),
             html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[3], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            dcc.Graph( figure= netEmissionGraph(T_emission_difference[3], 'Year', 'Net carbon emission difference (Ton)', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-5-graph':
         return html.Div([
@@ -427,16 +427,16 @@ def render_content(tab):
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[4]['period'].tolist(), T_forest_type_base[4]['primary forest'].tolist(), T_forest_type_base[4]['secondary forest'].tolist())),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[4], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[4], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[4], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[4], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (base scenario)')))
             ]),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[4], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[4], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[4], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[4], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (base scenario)')))
             ]),
             html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[4], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            dcc.Graph( figure= netEmissionGraph(T_emission_difference[4], 'Year', 'Net carbon emission difference (Ton)', 'Net emission difference between base and alternative scenarios')),
         ])
     elif tab == 'scn-6-graph':
         return html.Div([
@@ -450,16 +450,16 @@ def render_content(tab):
             dcc.Graph(figure=buildStackedBarGraph(T_forest_type_base[5]['period'].tolist(), T_forest_type_base[5]['primary forest'].tolist(), T_forest_type_base[5]['secondary forest'].tolist())),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[5], 'Year', 'Carbon stocks', 'Carbon stocks over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[5], 'Year', 'Carbon stocks', 'Carbon stocks over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_1[5], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure = multipanelLineGraph(T_cbm_output_3[5], 'Year', 'Carbon stocks (Ton)', 'Carbon stocks over years (base scenario)')))
             ]),
             dbc.Row(
             [
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[5], 'Year', 'Carbon emission', 'Carbon emission over years (alternative scenario)'))),
-                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[5], 'Year', 'Carbon emission', 'Carbon emission over years (base scenario)')))
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_2[5], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (alternative scenario)'))),
+                dbc.Col(dcc.Graph(figure=multipanelLineGraph(T_cbm_output_4[5], 'Year', 'Carbon emission (Ton)', 'Carbon emission over years (base scenario)')))
             ]),
             html.H3('Net emission difference', style={'fontSize': '32px'}),
-            dcc.Graph( figure= netEmissionGraph(T_emission_difference[5], 'Year', 'Net carbon emission difference', 'Net emission difference between base and alternative scenarios')),
+            dcc.Graph( figure= netEmissionGraph(T_emission_difference[5], 'Year', 'Net carbon emission difference (Ton)', 'Net emission difference between base and alternative scenarios')),
         ])
 
     elif tab == 'tdoff-1-graph':

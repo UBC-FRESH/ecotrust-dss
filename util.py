@@ -21,7 +21,8 @@ def inventory_processing(stands_org, canf):
     if stands_org['thlb'].sum() == 0:
         # Randomly select an index where the value is 0
         zero_indices = stands_org.index[stands_org['thlb'] == 0].tolist()
-        random_index = np.random.choice(zero_indices)
+        # random_index = np.random.choice(zero_indices)
+        random_index = zero_indices[-1]
     
         # Apply lambda to modify only the selected index
         stands_org['thlb'] = stands_org.apply(lambda row: 1 if row.name == random_index else row['thlb'], axis=1)

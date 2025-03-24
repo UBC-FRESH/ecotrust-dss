@@ -18,6 +18,15 @@ def inventory_processing(stands_org, canf):
         axis=1
     )
     stands_org['age2015'] = stands_org['age2015'].apply(lambda x: 890 if x > 900 else x)
+    if stands_org['thlb'].sum() == 0:
+        # Randomly select an index where the value is 0
+        zero_indices = stands_org.index[stands_org['thlb'] == 0].tolist()
+        random_index = np.random.choice(zero_indices)
+    
+        # Apply lambda to modify only the selected index
+        stands_org['thlb'] = stands_org.apply(lambda row: 1 if row.name == random_index else row['thlb'], axis=1)
+    # stands_org['thlb'] = stands_org.apply(lambda row: 1 if stands_org['thlb'].sum() == 0 and row.name == np.random.choice(stands_org.index[df['thlb'] == 0]) else row['thlb'], axis=1)
+    
     
     columns_to_keep = ['theme0', 'thlb', 'au', 'ldspp', 'age2015', 'shape_area', 'geometry','forest_type']
     stands = stands_org[columns_to_keep].copy()
@@ -73,6 +82,7 @@ def fm_bootstrapper(base_year, horizon, period_length, max_age, stands, curve_po
                 'theme5',  # forest type
                ]
     basecodes = [list(map(lambda x: str(x), stands[tc].unique())) for tc in theme_cols]
+    # basecodes[1] = ['0', '1']
     basecodes[2] = list(set(basecodes[2] + list(stands['theme2'].astype(str))))
     basecodes[3] = list(set(basecodes[3] + list(stands['theme3'].astype(str))))
     # basecodes[4] = list(set(basecodes[4] + list((stands['theme2'] * 1000 + 1).astype(str)) + list((stands['theme2'] * 1000 + 2).astype(str))))

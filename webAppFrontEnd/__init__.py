@@ -160,7 +160,7 @@ downloadPath = '/home/salar2/project/ecotrust-dss-/outputs/csv/ecotrust/'
 canf = pd.read_csv('data/canfi_species_revised.csv')
 canf = canf[['name','canfi_species']].set_index('name')
 ##################
-shapefile_path = './data/shp_files/tsa30.shp/stands.shp'
+shapefile_path = './data/shp_files/tsa25.shp/stands.shp'
 # shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
 stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
 stands_org = stands_org.to_crs(epsg=4326)

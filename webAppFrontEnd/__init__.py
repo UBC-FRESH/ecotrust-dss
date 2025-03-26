@@ -120,7 +120,7 @@ json_object_val = None
 ###########
 # Initialize the input parameters
 base_yearr = 2020
-horizonn = 10
+# horizonn = 7
 period_lengthh = 10
 max_agee = 1000
 n_steps = 100
@@ -160,13 +160,12 @@ downloadPath = '/home/salar2/project/ecotrust-dss-/outputs/csv/ecotrust/'
 canf = pd.read_csv('data/canfi_species_revised.csv')
 canf = canf[['name','canfi_species']].set_index('name')
 ##################
-shapefile_path = './data/shp_files/tsa08.shp/stands.shp'
-# shapefile_path = './data/shp_files/tsa17_test.shp/stands selection.shp'
+shapefile_path = './data/shp_files/tsa45.shp/stands.shp'
 stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
 stands_org = stands_org.to_crs(epsg=4326)
-abridgedStands = stands_org.head(100)   #.head(10) #only first 10 stands for testing purpose
-print(abridgedStands)
-print("abridgedStands")
+abridgedStands = stands_org  #.head(10) #only first 10 stands for testing purpose
+# print(abridgedStands)
+# print("abridgedStands")
 currentSelectedAreaCood = []
 
 ############################################################################
@@ -199,7 +198,7 @@ app.layout =html.Div( [ html.Div([
                 dbc.Col(html.Div("Horizon")),
                 dbc.Col(dcc.Input(
                     id="horizon_id", type="number", placeholder="Horizon",
-                    min=1900, max=2999, step=1, style={"min-width": "100%"}
+                    min=0, max=20, step=1, value=10, style={"min-width": "100%"}
                 )
                 ),
             ]
@@ -317,9 +316,10 @@ html.Div(children=[
 @callback(Output('tabs-content-example-graph', 'children'),
               Input('tabs-graphs', 'value'))
 def render_content(tab):
-
     if resultsReady == False:
-        return html.Div([html.H3('Results not ready')])
+        return html.Div([html.H3('Results are not ready yet')])
+
+        
 
     print("showing results now")
 
@@ -507,7 +507,7 @@ resCounterIndex = 0
                   Input("analyse_button_id", "n_clicks"),
               ])
 def mycallback(horizon, n_clicks):#
-
+    global msgShow
     msgShow = "none selected"
     global currentSelectedAreaCood
     global T_df_plot_12
@@ -527,9 +527,9 @@ def mycallback(horizon, n_clicks):#
     if(numOfPointsInPoly > 2):
         selPoly = Polygon(currentSelectedAreaCood)
         gdf = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[selPoly])
-        # sjoin_results = gpd.sjoin(abridgedStands, gdf, how='left', predicate='within')
-        # afterDropping = sjoin_results.dropna()
-        afterDropping = abridgedStands
+        sjoin_results = gpd.sjoin(abridgedStands, gdf, how='left', predicate='within')
+        afterDropping = sjoin_results.dropna()
+        # afterDropping = abridgedStands
         afterDropping = afterDropping.to_crs(3005)
         print("num of stands got is")
         print(afterDropping)
@@ -539,8 +539,8 @@ def mycallback(horizon, n_clicks):#
         curve_points_table = curve_points_generator(stands, yld, canf)
         print(curve_points_table)
         print("curve points table got")
-        print(horizonn)
-        fm = fm_bootstrapper(base_yearr, horizonn, period_lengthh, max_agee, stands, curve_points_table, tvy_name)
+        print(horizon)
+        fm = fm_bootstrapper(base_yearr, horizon, period_lengthh, max_agee, stands, curve_points_table, tvy_name)
         print("fm is created")
         c_curves_p, c_curves_f = carbon_curve_points(fm)
         print("c and f points are received")
@@ -594,12 +594,15 @@ def mycallback(horizon, n_clicks):#
         print("tradeoff3 is done")
         global resultsReady
         resultsReady = True
-        numOfHits = afterDropping.shape[0]
+        #numOfHits = afterDropping.shape[0]
         msgShow = "Please switch tabs to update and get the results"
-
+        print(msgShow) #for testing in the terminal
+        print("try to print msg")
+    print(msgShow) #for testing in the terminal
     #global resCounterIndex
     #resCounterIndex= resCounterIndex + 1
-    return msgShow#"Done " + str(resCounterIndex)
+    print("returning after printing")
+    return msgShow #"Done " + str(resCounterIndex)
 
 @callback(Output("geojsonComp", "data"),
           Input('upload-data', 'contents'),

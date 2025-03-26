@@ -1017,7 +1017,7 @@ def cmp_c_z_bd(fm, path, expr):
     leaf-to-root-node path, and expression to evaluate).
     """   
     result = 0.
-    for t in range(1, fm.period_length + 1):
+    for t in range(1, len(fm.periods) + 1):
         result += fm.inventory(t, mask = ('?', '?', '?', '?', '?', '1'))
     return result
 
@@ -1027,10 +1027,10 @@ def cmp_c_c_bd(fm, path, expr):
     leaf-to-root-node path, and expression to evaluate).
     """
     result = 0.
-    for t in range(1, fm.period_length + 1):
+    for t in range(1, len(fm.periods) + 1):
         result += fm.inventory(t, mask = ('?', '?', '?', '?', '?', '1'))
     # Initialing a dictionary where keys are periods
-    result_dict = {period: 0 for period in fm.periods}
+    result_dict = {period: 0 for period in range(1, len(fm.periods) + 1)}
     # Replacing the the value of last period to the "result". This will be used when for epsilon constraint method
     result_dict[fm.periods[-1]] = result
     return result_dict
@@ -1124,7 +1124,7 @@ def epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_eff
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
     # cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_gs_max_stock = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
 
     p_max_stock = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
@@ -1209,7 +1209,7 @@ def tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displace
     cflw_ha_max_stock = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_stock = ({p:0.05 for p in fm.periods}, 1)
     # cgen_hv_max_stock = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_max_stock = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_gs_max_stock = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
     
     p_max_stock = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
@@ -1410,7 +1410,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
     cflw_ha_max_bd = ({p:0.05 for p in fm.periods}, 1)
     cflw_hv_max_bd = ({p:0.05 for p in fm.periods}, 1)
     # cgen_hv_max_bd = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-    cgen_gs_max_bd = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+    cgen_gs_max_bd = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
     
     p_max_bd = gen_scenario(fm=fm, 
                      clt_percentage=clt_percentage,
@@ -1487,7 +1487,7 @@ def tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displace
         cflw_ha = ({p:0.05 for p in fm.periods}, 1)
         cflw_hv = ({p:0.05 for p in fm.periods}, 1)
         # cgen_hv = {'lb':{1:0}, 'ub':{1:aac}} # Equal with Annual Allowable Cut
-        cgen_gs = {'lb':{10:initial_gs*0.9}, 'ub':{10:initial_gs*10000}} #Not less than 90% of initial growing stock
+        cgen_gs = {'lb':{len(fm.periods):initial_gs*0.9}, 'ub':{len(fm.periods):initial_gs*10000}} #Not less than 90% of initial growing stock
         if i == 0:
             cgen_bd = {'lb':{len(fm.periods):  0.99 * bd_max}, 'ub':{len(fm.periods): bd_max}}
         else:

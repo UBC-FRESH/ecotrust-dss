@@ -105,6 +105,21 @@ def netEmissionGraph(dataFrame1, xLabel, yLabel, title):
     netEmissionFig.add_trace(go.Scatter(x=dataFrame1['Year'], y=baseLineDf['dummy'], mode='lines', showlegend = False, line = dict(color='red', width=2, dash='dash')))
     return netEmissionFig
 
+def clear_output_folder(folder_path):
+    if os.path.exists(folder_path):
+        for filename in os.listdir(folder_path):
+            file_path = os.path.join(folder_path, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)  # remove file or symbolic link
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)  # remove directory
+            except Exception as e:
+                print(f'Failed to delete {file_path}. Reason: {e}')
+    else:
+        print(f"Folder {folder_path} does not exist.")
+
+
 ############################################################################
 ######Parameters that will be passed to the backend ########################
 print("start")
@@ -159,6 +174,7 @@ yld['AU'] = yld['AU'].astype(int)
 downloadPath = '/home/salar2/project/ecotrust-dss-/outputs/csv/ecotrust/'
 canf = pd.read_csv('data/canfi_species_revised.csv')
 canf = canf[['name','canfi_species']].set_index('name')
+clear_output_folder('./outputs')
 ##################
 shapefile_path = './data/shp_files/tsa45.shp/stands.shp'
 stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)

@@ -2121,7 +2121,7 @@ def results_scenarios(fm, clt_percentage, credibility, budget_input, n_steps, ma
     # compare_kpi_socioeconomic(kpi_socio_alt, kpi_eco_alt, kpi_socio_base, kpi_eco_base)
     print("---------------------------------------------------------------------------------------")
     return df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt, df_plot_34, cbm_output_3, cbm_output_4, forest_type_base, emission_difference 
-
+ 
 def cbm_report(fm, cbm_output, biomass_pools, dom_pools, fluxes, gross_growth):
     # Add carbon pools indicators 
     pi = cbm_output.classifiers.to_pandas().merge(cbm_output.pools.to_pandas(), 

@@ -165,7 +165,10 @@ cython_debug/
 *.save
 
 # Ignore the data folder
-/data/
+/data/ecotrust-dss-bc-data/
+/data/shp_files/
+/data/canfi_species.csv
+/data/yld.csv
 /outputs/
 /results/
 /Archived/

@@ -124,7 +124,7 @@ def clear_output_folder(folder_path):
 ######Parameters that will be passed to the backend ########################
 print("start")
 base_year_val = 0
-horizon_val = 0
+horizon = 0
 period_length_val = 0
 max_age_val = 0
 num_of_steps_val = 0
@@ -168,22 +168,24 @@ T_forest_type_alt = []
 T_emission_difference = []
 resultsReady = False
 ###################
-yld = pd.read_csv('./data/yld.csv')
+yld = pd.read_csv('./data/ecotrust-dss-bc-data/yld.csv')
 yld['AU'] = yld['AU'].astype(int)
 
-downloadPath = '/home/salar2/project/ecotrust-dss-/outputs/csv/ecotrust/'
-canf = pd.read_csv('data/canfi_species_revised.csv')
+downloadPath = './outputs/csv/ecotrust/'
+canf = pd.read_csv('./data/ecotrust-dss-bc-data/canfi_species.csv')
 canf = canf[['name','canfi_species']].set_index('name')
 clear_output_folder('./outputs')
 ##################
-shapefile_path = './data/shp_files/tsa45.shp/stands.shp'
-stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
+shapefile_path = './data/ecotrust-dss-bc-data/merged_stands.gpkg'
+# shapefile_path = './data/shp_files/tsa45.shp/stands.shp'
+stands_org = gpd.read_file(shapefile_path, layer="merged_stands")
+# stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
 stands_org = stands_org.to_crs(epsg=4326)
 abridgedStands = stands_org  #.head(10) #only first 10 stands for testing purpose
 # print(abridgedStands)
 # print("abridgedStands")
 currentSelectedAreaCood = []
-
+print('loading done')
 ############################################################################
 ############################################################################
 
@@ -194,16 +196,7 @@ server = app.server
 
 app.layout =html.Div( [ html.Div([
     html.Div(children=[
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Base Year")),
-        #         dbc.Col(dcc.Input(
-        #             id="base_year_id", type="number", placeholder="Base Year",
-        #             min=1900, max=2999, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
+
         dbc.Row(
             [
                 dbc.Col(html.Label( 'Define the planning horizon', id="instruction_label_id", style={'width': '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -219,58 +212,7 @@ app.layout =html.Div( [ html.Div([
                 ),
             ]
         ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Period Length")),
-        #         dbc.Col(dcc.Input(
-        #             id="period_length_id", type="number", placeholder="Period Length",
-        #             min=1, max=100, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Max Age")),
-        #         dbc.Col(dcc.Input(
-        #             id="max_age_id", type="number", placeholder="Max Age",
-        #             min=1, max=1000, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Number of Steps")),
-        #         dbc.Col(dcc.Input(
-        #             id="num_of_steps_id", type="number", placeholder="Number of Steps",
-        #             min=1, max=10000, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Max Harvest")),
-        #         dbc.Col(dcc.Input(
-        #             id="max_harvest_id", type="number", placeholder="Max Harvest",
-        #             min=0, max=100, step=1, style={"min-width": "100%"}
-        #         )
-        #         ),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Scenarios")),
-        #         dbc.Col(dcc.Dropdown( ['Scenario 1', 'Scenario 2', 'Scenario 3','Scenario 4', 'Scenario 5', 'Scenario 6'], 'Scenario 1', clearable=False, id = "scenarios_id", )),
-        #     ]
-        # ),
-        # dbc.Row(
-        #     [
-        #         dbc.Col(html.Div("Objective")),
-        #         dbc.Col(dcc.Dropdown(['Objective 1', 'Objective 2', 'Objective 3','Objective 4'], 'Objective 1',clearable=False, id = "objective_id", )),
-        #     ]
-        # ),
+
         dbc.Row(
             [
                 dbc.Col( dcc.Upload(html.Button('Upload Area of Interest', id = "upload_area_button_id", style = {'width' : '100%'}), id='upload-data'), width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -512,14 +454,7 @@ def mycallback2( n_clicks):#
 resCounterIndex = 0
 @app.callback(Output('wait_label_id','children' ), [],
               [
-                  # State('base_year_id', 'value'),
                   State('horizon_id', 'value'),
-                  # State('period_length_id', 'value'),
-                  # State('max_age_id', 'value'),
-                  # State('num_of_steps_id', 'value'),
-                  # State('max_harvest_id', 'value'),
-                  # State('scenarios_id', 'value'),
-                  # State('objective_id', 'value'),
                   Input("analyse_button_id", "n_clicks"),
               ])
 def mycallback(horizon, n_clicks):#
@@ -535,10 +470,30 @@ def mycallback(horizon, n_clicks):#
     global T_forest_type_base
     global T_forest_type_alt
     global T_emission_difference
+    global bd1_values
+    global cs1_values
+    global hv2_values
+    global cs2_values
+    global hv3_values
+    global bd3_values
+    bd1_values = []
+    cs1_values = []
+    hv2_values = []
+    cs2_values = []
+    hv3_values = []
+    bd3_values = []
+    T_df_plot_12 = []
+    T_cbm_output_1 = []
+    T_cbm_output_2 = []
+    T_df_plot_34 = []
+    T_cbm_output_3 = []
+    T_cbm_output_4 = []
+    T_forest_type_base = []
+    T_forest_type_alt = []
+    T_emission_difference = []
     numOfPointsInPoly = len(currentSelectedAreaCood)
     print(currentSelectedAreaCood)
     print(numOfPointsInPoly)
-    print("its OK")
 
     if(numOfPointsInPoly > 2):
         selPoly = Polygon(currentSelectedAreaCood)
@@ -549,12 +504,11 @@ def mycallback(horizon, n_clicks):#
         afterDropping = afterDropping.to_crs(3005)
         print("num of stands got is")
         print(afterDropping)
+        clear_output_folder('./outputs')
         stands = inventory_processing(afterDropping, canf)
         print(stands)
         print("stands got")
         curve_points_table = curve_points_generator(stands, yld, canf)
-        print(curve_points_table)
-        print("curve points table got")
         print(horizon)
         fm = fm_bootstrapper(base_yearr, horizon, period_lengthh, max_agee, stands, curve_points_table, tvy_name)
         print("fm is created")
@@ -594,18 +548,11 @@ def mycallback(horizon, n_clicks):#
             T_forest_type_base.append(forest_type_base)
             T_emission_difference.append(emission_difference)
         print("opt is done")
-        print("results ready now")
-        global bd1_values
-        global cs1_values
         bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
         print("tradeoff1 is done")
         epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        global hv2_values
-        global cs2_values
         hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
         print("tradeoff2 is done")
-        global hv3_values
-        global bd3_values
         hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
         print("tradeoff3 is done")
         global resultsReady

@@ -30,13 +30,15 @@ from IPython.display import display
 import libcbm
 import zipfile
 import os
+import pickle
+import os
+from shapely.geometry import Polygon
+import geopandas as gpd
 
 from util import compile_events, cbm_report, compile_scenario_maxstock, plot_scenario_maxstock, run_cbm_emissionstock, run_scenario, plugin_c_curves, plugin_c_curves, cbm_report_both, compare_ws3_cbm, compare_ws3_cbm_both, track_system_stock, track_system_emission, compile_scenario_minemission, plot_scenario_minemission, kpi_age, kpi_species, cmp_c_ss, cmp_c_se, results_scenarios, bootstrap_ogi, compare_kpi_age, epsilon_computer, tradeoff_biodiversity_cs, tradeoff_hv_cs, tradeoff_hv_biodiversity, inventory_processing, curve_points_generator, fm_bootstrapper, carbon_curve_points
 
-
 ###########################################################################
 ########functions to create various graph objects###########################
-
 
 from plotly.subplots import make_subplots
 import plotly.graph_objs as go
@@ -123,19 +125,12 @@ def clear_output_folder(folder_path):
 ############################################################################
 ######Parameters that will be passed to the backend ########################
 print("start")
-base_year_val = 0
+# base_year_val = 0
 horizon = 0
-period_length_val = 0
-max_age_val = 0
-num_of_steps_val = 0
-max_harvest_val = 0
-scenario_val = "Scenario 1"
-objective_val = "Objective 1"
 json_object_val = None
 ###########
 # Initialize the input parameters
 base_yearr = 2020
-# horizonn = 7
 period_lengthh = 10
 max_agee = 1000
 n_steps = 100
@@ -182,16 +177,29 @@ stands_org = gpd.read_file(shapefile_path, layer="merged_stands")
 # stands_org = gpd.read_file(shapefile_path, engine = 'fiona', use_arrow = True)
 stands_org = stands_org.to_crs(epsg=4326)
 abridgedStands = stands_org  #.head(10) #only first 10 stands for testing purpose
-# print(abridgedStands)
-# print("abridgedStands")
 currentSelectedAreaCood = []
 print('loading done')
 ############################################################################
 ############################################################################
 
+
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 #app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app = Dash(__name__, external_stylesheets=external_stylesheets, serve_locally=True, requests_pathname_prefix="/container11-port8002/")
+
+import uuid
+import os
+
+@app.callback(
+    Output('session-id', 'data'),
+    Input('horizon_id', 'value'),  # or any trigger on app start
+    prevent_initial_call=True
+)
+def assign_session(_):
+    session_id = str(uuid.uuid4())
+    os.makedirs(f'./sessions/{session_id}', exist_ok=True)
+    return session_id
+
 server = app.server
 
 app.layout =html.Div( [ html.Div([
@@ -218,6 +226,12 @@ app.layout =html.Div( [ html.Div([
                 dbc.Col( dcc.Upload(html.Button('Upload Area of Interest', id = "upload_area_button_id", style = {'width' : '100%'}), id='upload-data'), width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
             ]
         ),
+        dcc.Store(id='session-id', storage_type='session'), ###########
+        dcc.Store(id='results-ready', storage_type='session'), ######
+        dcc.Store(id='aoi-coordinates', storage_type='session'), #####
+        dcc.Store(id='analysis_status_store', data='idle'), ######
+        html.Div(id='analysis_status_msg', style={'textAlign': 'center', 'marginTop': '10px'}), #########
+
         dbc.Row(
             [
                 dbc.Col(html.Button('Analyse',id = "analyse_button_id", style = {'width' : '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -233,6 +247,15 @@ app.layout =html.Div( [ html.Div([
                 dbc.Col(html.Label( 'Waiting', id="wait_label_id", style={'width': '100%'}),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
             ]
         ),
+        # dbc.Alert(
+        #     id="alert_analysis",
+        #     children="",
+        #     color="info",
+        #     is_open=False,
+        #     dismissable=False,
+        # ),
+        # dcc.Store(id="analysis_status", data="idle"),  # to store status like "waiting" or "done"
+
         dbc.Row(
             [
                 dbc.Col(dcc.Download(id="dcc_download"),width={"size": 6, "offset": 3}, style={"margin-top": "10px"}),
@@ -269,15 +292,49 @@ html.Div(children=[
 
 ])
 
-############################################################################
-############################################################################
-@callback(Output('tabs-content-example-graph', 'children'),
-              Input('tabs-graphs', 'value'))
-def render_content(tab):
-    if resultsReady == False:
-        return html.Div([html.H3('Results are not ready yet')])
 
-        
+
+
+
+############################################################################
+############################################################################
+
+
+@callback(Output('tabs-content-example-graph', 'children'),
+              Input('tabs-graphs', 'value'),
+         State('session-id', 'data')  # <- get session_id from dcc.Store
+         )
+def render_content(tab, session_id):
+    # if resultsReady == False:
+    #     return html.Div([html.H3('Results are not ready yet')])
+
+    # if not resultsReady:
+    #     return html.Div([html.H3('Results are not ready yet')])
+
+    session_path = os.path.join("sessions", session_id)
+    session_file = os.path.join(session_path, "results.pkl")
+
+    if not os.path.exists(session_file):
+        return html.Div("No results found for your session.")
+
+    with open(session_file, "rb") as f:
+        data = pickle.load(f)
+
+    T_df_plot_12 = data['T_df_plot_12']
+    T_cbm_output_1 = data['T_cbm_output_1']
+    T_cbm_output_2 = data['T_cbm_output_2']
+    T_df_plot_34 = data['T_df_plot_34']
+    T_cbm_output_3 = data['T_cbm_output_3']
+    T_cbm_output_4 = data['T_cbm_output_4']
+    T_forest_type_base = data['T_forest_type_base']
+    T_forest_type_alt = data['T_forest_type_alt']
+    T_emission_difference = data['T_emission_difference']
+    bd1_values = data['bd1_values']
+    cs1_values = data['cs1_values']
+    hv2_values = data['hv2_values']
+    cs2_values = data['cs2_values']
+    hv3_values = data['hv3_values']
+    bd3_values = data['bd3_values']        
 
     print("showing results now")
 
@@ -451,93 +508,57 @@ def mycallback2( n_clicks):#
     return dcc.send_file('report123.zip')
 
 
-resCounterIndex = 0
-@app.callback(Output('wait_label_id','children' ), [],
-              [
-                  State('horizon_id', 'value'),
-                  Input("analyse_button_id", "n_clicks"),
-              ])
-def mycallback(horizon, n_clicks):#
-    global msgShow
-    msgShow = "none selected"
-    global currentSelectedAreaCood
-    global T_df_plot_12
-    global T_cbm_output_1
-    global T_cbm_output_2
-    global T_df_plot_34
-    global T_cbm_output_3
-    global T_cbm_output_4
-    global T_forest_type_base
-    global T_forest_type_alt
-    global T_emission_difference
-    global bd1_values
-    global cs1_values
-    global hv2_values
-    global cs2_values
-    global hv3_values
-    global bd3_values
-    bd1_values = []
-    cs1_values = []
-    hv2_values = []
-    cs2_values = []
-    hv3_values = []
-    bd3_values = []
-    T_df_plot_12 = []
-    T_cbm_output_1 = []
-    T_cbm_output_2 = []
-    T_df_plot_34 = []
-    T_cbm_output_3 = []
-    T_cbm_output_4 = []
-    T_forest_type_base = []
-    T_forest_type_alt = []
-    T_emission_difference = []
-    numOfPointsInPoly = len(currentSelectedAreaCood)
-    print(currentSelectedAreaCood)
-    print(numOfPointsInPoly)
+# resCounterIndex = 0
 
-    if(numOfPointsInPoly > 2):
+
+
+
+@app.callback(
+    Output("analysis_status_store", "data"),
+    Output("wait_label_id", "children"),
+    Output("results-ready", "data"),
+    Input("analyse_button_id", "n_clicks"),
+    State("horizon_id", "value"),
+    State("session-id", "data"),
+    State("aoi-coordinates", "data"),
+    prevent_initial_call=True
+)
+def run_analysis(n_clicks, horizon, session_id, currentSelectedAreaCood):
+    if not currentSelectedAreaCood or len(currentSelectedAreaCood) < 3:
+        return "error", "No AOI uploaded or AOI too small.", False
+
+    try:
+
+
+        if len(currentSelectedAreaCood) <= 2:
+            raise ValueError("Not enough polygon points in AOI.")
+
         selPoly = Polygon(currentSelectedAreaCood)
         gdf = gpd.GeoDataFrame(index=[0], crs='epsg:4326', geometry=[selPoly])
         sjoin_results = gpd.sjoin(abridgedStands, gdf, how='left', predicate='within')
-        afterDropping = sjoin_results.dropna()
-        # afterDropping = abridgedStands
-        afterDropping = afterDropping.to_crs(3005)
-        print("num of stands got is")
-        print(afterDropping)
+        afterDropping = sjoin_results.dropna().to_crs(3005)
         clear_output_folder('./outputs')
         stands = inventory_processing(afterDropping, canf)
-        print(stands)
-        print("stands got")
+
         curve_points_table = curve_points_generator(stands, yld, canf)
-        print(horizon)
         fm = fm_bootstrapper(base_yearr, horizon, period_lengthh, max_agee, stands, curve_points_table, tvy_name)
-        print("fm is created")
         c_curves_p, c_curves_f = carbon_curve_points(fm)
-        print("c and f points are received")
         plugin_c_curves(fm, c_curves_p, c_curves_f)
         bootstrap_ogi(fm)
-        print("all curves are got")
+
         epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=10, solver=ws3.opt.SOLVER_PULP)
-        print("epsilon")
-        print(epsilon)
+
+        # Result containers
+        T_df_plot_12, T_cbm_output_1, T_cbm_output_2 = [], [], []
+        T_df_plot_34, T_cbm_output_3, T_cbm_output_4 = [], [], []
+        T_forest_type_base, T_forest_type_alt, T_emission_difference = [], [], []
+
         for scenario_name in scenario_names:
-            print(f"Running for {case_study}_{obj_mode}_{scenario_name}...")
-            df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt, df_plot_34, cbm_output_3, cbm_output_4, forest_type_base, emission_difference = results_scenarios(fm, 
-                      clt_percentage, 
-                      credibility, 
-                      budget_input, 
-                      n_steps, 
-                      max_harvest, 
-                      scenario_name, 
-                      displacement_effect, 
-                      hwp_pool_effect_value, 
-                      release_immediately_value, 
-                      case_study, 
-                      obj_mode, 
-                      epsilon,
-                      cs_max,
-                      pickle_output_base=False, 
-                      pickle_output_alter=False)
+            df_plot_12, cbm_output_1, cbm_output_2, forest_type_alt, df_plot_34, cbm_output_3, cbm_output_4, forest_type_base, emission_difference = results_scenarios(
+                fm, clt_percentage, credibility, budget_input, n_steps, max_harvest, scenario_name,
+                displacement_effect, hwp_pool_effect_value, release_immediately_value, case_study,
+                obj_mode, epsilon, cs_max, pickle_output_base=False, pickle_output_alter=False
+            )
             T_df_plot_12.append(df_plot_12)
             T_cbm_output_1.append(cbm_output_1)
             T_cbm_output_2.append(cbm_output_2)
@@ -547,48 +568,104 @@ def mycallback(horizon, n_clicks):#
             T_cbm_output_4.append(cbm_output_4)
             T_forest_type_base.append(forest_type_base)
             T_emission_difference.append(emission_difference)
-        print("opt is done")
+
         bd1_values, cs1_values = tradeoff_biodiversity_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        print("tradeoff1 is done")
         epsilon, cs_max = epsilon_computer(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
         hv2_values, cs2_values = tradeoff_hv_cs(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, epsilon, cs_max, n=4, solver=ws3.opt.SOLVER_PULP)
-        print("tradeoff2 is done")
         hv3_values, bd3_values = tradeoff_hv_biodiversity(fm, clt_percentage, hwp_pool_effect_value, displacement_effect, release_immediately_value, n=4, solver=ws3.opt.SOLVER_PULP)
-        print("tradeoff3 is done")
-        global resultsReady
-        resultsReady = True
-        #numOfHits = afterDropping.shape[0]
-        msgShow = "Please switch tabs to update and get the results"
-        print(msgShow) #for testing in the terminal
-        print("try to print msg")
-    print(msgShow) #for testing in the terminal
-    #global resCounterIndex
-    #resCounterIndex= resCounterIndex + 1
-    print("returning after printing")
-    return msgShow #"Done " + str(resCounterIndex)
 
-@callback(Output("geojsonComp", "data"),
-          Input('upload-data', 'contents'),
-              State('upload-data', 'filename'),
-              State('upload-data', 'last_modified'))
-def update_output(list_of_contents, list_of_names, list_of_dates):
-    if list_of_contents is not None:
-        content_type, content_string = list_of_contents.split(',')
-        decodedeStuff = base64.b64decode(content_string).decode()
-        json_object  = json.loads(decodedeStuff)
 
-        if isinstance(json_object, dict):
-            if 'features' in json_object:
-                featData = json_object['features']
-                for elem in featData:
-                    geometryData = elem["geometry"]
-                    if (geometryData["type"] == "Polygon"):
-                        global currentSelectedAreaCood
-                        listOfCoods = geometryData["coordinates"]
-                        currentSelectedAreaCood = listOfCoods[0]
-                        print("got curve coods")
-                        print(currentSelectedAreaCood)
-        return json_object
+        import os
+        session_path = f"./sessions/{session_id}"
+        # os.makedirs(session_path, exist_ok=True)
+        
+        # Debug result contents
+        print("Dumping results to:", session_path)
+        print("Data keys:", {
+            'T_df_plot_12': len(T_df_plot_12),
+            'T_cbm_output_1': len(T_cbm_output_1),
+            'T_cbm_output_2': len(T_cbm_output_2),
+            # ... add more if needed
+        })
+        # Save all data to session folder
+        with open(f"{session_path}/results.pkl", "wb") as f:
+            pickle.dump({
+                'T_df_plot_12': T_df_plot_12,
+                'T_cbm_output_1': T_cbm_output_1,
+                'T_cbm_output_2': T_cbm_output_2,
+                'T_df_plot_34': T_df_plot_34,
+                'T_cbm_output_3': T_cbm_output_3,
+                'T_cbm_output_4': T_cbm_output_4,
+                'T_forest_type_base': T_forest_type_base,
+                'T_forest_type_alt': T_forest_type_alt,
+                'T_emission_difference': T_emission_difference,
+                'bd1_values': bd1_values,
+                'cs1_values': cs1_values,
+                'hv2_values': hv2_values,
+                'cs2_values': cs2_values,
+                'hv3_values': hv3_values,
+                'bd3_values': bd3_values,
+            }, f)
+
+
+
+        msg = "Analysis complete. Switch tabs to view results."
+        return "done", msg, True
+
+    except Exception as e:
+        return "error", f"Error: {str(e)}", False
+
+
+# Callback for showing status messages (in progress, done, etc.)
+@app.callback(
+    Output("analysis_status_msg", "children"),
+    Input("analysis_status_store", "data")
+)
+def update_status_message(status):
+    if status == "in_progress":
+        return html.Div("Analysis is in progress...", style={"color": "orange"})
+    elif status == "done":
+        return html.Div("Analysis is done. Look at the results below.", style={"color": "green"})
+    elif status == "error":
+        return html.Div("An error occurred during analysis.", style={"color": "red"})
+    elif status == "reset":
+        return ""
+    else:
+        return ""
+
+
+
+@app.callback(
+    Output("geojsonComp", "data"),
+    Output("aoi-coordinates", "data"),
+    Input('upload-data', 'contents'),
+    State('upload-data', 'filename'),
+    State('session-id', 'data'),
+    prevent_initial_call=True
+)
+def update_output(contents, filename, session_id):
+    if contents is not None:
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string).decode()
+        geojson_data = json.loads(decoded)
+
+        if isinstance(geojson_data, dict) and 'features' in geojson_data:
+            for feature in geojson_data['features']:
+                geometry = feature["geometry"]
+                if geometry["type"] == "Polygon":
+                    coords = geometry["coordinates"][0]
+
+                    # Save to disk
+                    os.makedirs(f"./sessions/{session_id}", exist_ok=True)
+                    with open(f"./sessions/{session_id}/aoi.json", "w") as f:
+                        json.dump(coords, f)
+
+                    # Return for storage in memory too
+                    return geojson_data, coords
+    return dash.no_update, dash.no_update
+
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

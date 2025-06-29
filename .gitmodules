@@ -1,0 +1,5 @@
+[submodule "data"]
+	path = data
+	url = ssh://git@gin.g-node.org/ubc-fresh/ecotrust-dss-data.git
+	datalad-id = f9baaa5e-c586-453a-b129-625e8a4e4528
+	datalad-url = ssh://git@gin.g-node.org/ubc-fresh/ecotrust-dss-data.git

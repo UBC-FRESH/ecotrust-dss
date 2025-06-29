@@ -1,2 +1,4 @@
 *.dbf filter=lfs diff=lfs merge=lfs -text
 *.shp filter=lfs diff=lfs merge=lfs -text
+* annex.backend=MD5E
+**/.git* annex.largefiles=nothing

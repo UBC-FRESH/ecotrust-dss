@@ -185,7 +185,8 @@ print('loading done')
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 #app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app = Dash(__name__, external_stylesheets=external_stylesheets, serve_locally=True, requests_pathname_prefix="/container11-port8002/")
+#app = Dash(__name__, external_stylesheets=external_stylesheets, serve_locally=True, requests_pathname_prefix="/container11-port8002/")
+app = Dash(__name__, external_stylesheets=external_stylesheets, serve_locally=True)
 
 import uuid
 import os

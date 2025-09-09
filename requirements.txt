@@ -172,5 +172,5 @@ webencodings==0.5.1
 websocket-client==1.8.0
 Werkzeug==3.0.6
 widgetsnbextension==4.0.13
--e git+https://github.com/UBC-FRESH/ws3.git@a040ebbe74efd13a64f8dcb3a9237a4a3d624938#egg=ws3
+ws3
 zipp==3.19.2

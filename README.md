@@ -1,5 +1,7 @@
 # Overview
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17330007.svg)](https://doi.org/10.5281/zenodo.17330007)
+
 This repository includes a web-based app Decision Support System (DSS) that enables a user with a limitted skill set to improve forest management activities considering GHG emissions and Biodiversity concerns.
 
 # Repository Structure
